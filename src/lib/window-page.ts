@@ -89,7 +89,9 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .price-row { display: flex; align-items: baseline; gap: 10px; }
 .price { font-size: 32px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .ccy { color: var(--fg-dim); font-size: 13px; }
-.move { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Only the figures carry the up/down colour; the period beside them is a plain label. */
+.move { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.move-label { color: var(--fg-dim); font-weight: 400; margin-left: 4px; }
 .up { color: var(--good); } .down { color: var(--down); } .flat { color: var(--fg-dim); }
 .chart-head { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 6px; }
 .seg { display: inline-flex; background: var(--card); border: 1px solid var(--card-line); border-radius: 7px; padding: 2px; gap: 2px; }
@@ -427,9 +429,10 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     var c = range === "1d" ? null : shown;
     var src = c && c.range === range ? c : today;
     if (!src) { move.textContent = ""; return; }
-    move.className = "move " + src.trend;
+    move.className = "move";
     var label = src === today ? "today" : RANGE_NAMES[range];
-    move.textContent = [src.change, src.changePct ? "(" + src.changePct + ")" : ""].join(" ").trim() + " " + label;
+    var figures = [src.change, src.changePct ? "(" + src.changePct + ")" : ""].join(" ").trim();
+    move.replaceChildren(el("span", src.trend, figures), el("span", "move-label", label));
   }
 
   function chartNotice(text) {
