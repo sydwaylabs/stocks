@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildChart, sessionTicks, spread } from "./chart-data.js";
+import { buildChart, priceScale, sessionTicks, spread } from "./chart-data.js";
 import type { Series } from "./providers/types.js";
 
 const HOUR = 3600_000;
@@ -100,6 +100,39 @@ describe("longer ranges", () => {
 
   it("draws nothing from an empty series", () => {
     expect(buildChart({ points: [], times: [], utcOffset: 0 }, "1mo")).toMatchObject({ points: [], ticks: [] });
+  });
+});
+
+describe("price scale", () => {
+  it("labels round prices inside the data, with headroom around it", () => {
+    const s = priceScale([340.46, 347.82, 342]);
+    expect(s.yTicks.map((t) => t.label)).toEqual(["342", "344", "346"]);
+    expect(s.yMin).toBeLessThan(340.46);
+    expect(s.yMax).toBeGreaterThan(347.82);
+  });
+
+  it("scales large and small prices", () => {
+    expect(priceScale([80735, 82717]).yTicks.map((t) => t.label)).toEqual(["81,000", "81,500", "82,000", "82,500"]);
+    expect(priceScale([243, 348]).yTicks.map((t) => t.label)).toEqual(["250", "275", "300", "325"]);
+    expect(priceScale([0.0121, 0.0134]).yTicks.map((t) => t.label)).toEqual(["0.0125", "0.0130"]);
+  });
+
+  it("keeps every tick between the extremes, three to five of them", () => {
+    for (const [lo, hi] of [[1, 2], [99.5, 100.2], [36018, 36462], [5, 500], [0.5, 0.51]]) {
+      const s = priceScale([lo, hi]);
+      expect(s.yTicks.length, `${lo}–${hi}`).toBeGreaterThanOrEqual(2);
+      expect(s.yTicks.length, `${lo}–${hi}`).toBeLessThanOrEqual(5);
+      for (const t of s.yTicks) {
+        expect(t.v).toBeGreaterThanOrEqual(lo);
+        expect(t.v).toBeLessThanOrEqual(hi);
+      }
+    }
+  });
+
+  it("gives a flat line a scale", () => {
+    const s = priceScale([100, 100, 100]);
+    expect(s.yMax).toBeGreaterThan(s.yMin);
+    expect(s.yTicks.length).toBeGreaterThan(0);
   });
 });
 

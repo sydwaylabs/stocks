@@ -20,6 +20,10 @@ export type ChartData = {
   /** The previous close (1D) or the close before the range began: the dashed line. */
   baseline?: number;
   ticks: { x: number; t: number; kind: TickKind }[];
+  /** The price scale: the plotted span, and round values inside it to label and rule. */
+  yMin: number;
+  yMax: number;
+  yTicks: { v: number; label: string }[];
   /** The session shown, for "Today" or "Fri Oct 16". 1D only. */
   sessionStart?: number;
   sessionEnd?: number;
@@ -39,7 +43,10 @@ export function buildChart(series: Series, range: ChartRange): ChartData {
   const last = points[n - 1];
   const change = baseline !== undefined && last !== undefined ? last - baseline : undefined;
   const changePct = change !== undefined && baseline ? (change / baseline) * 100 : undefined;
-  const base = { range, baseline, change: formatChange(change), changePct: formatPct(changePct), trend: trendOf(change) };
+  const base = {
+    range, baseline, change: formatChange(change), changePct: formatPct(changePct), trend: trendOf(change),
+    ...priceScale(baseline !== undefined ? [...points, baseline] : points),
+  };
   if (n === 0) return { ...base, points: [], ticks: [] };
 
   if (range === "1d") {
@@ -64,6 +71,38 @@ export function buildChart(series: Series, range: ChartRange): ChartData {
     points: points.map((v, i) => ({ x: at(i), v })),
     ticks: spread(boundaries, MAX_TICKS).map((i) => ({ x: at(i), t: times[i], kind })),
   };
+}
+
+/**
+ * The span to plot — the data plus a little headroom, so the line never touches the frame — and
+ * three to five round prices inside it: steps of 1, 2, 2.5 or 5 times a power of ten.
+ */
+export function priceScale(values: number[]): Pick<ChartData, "yMin" | "yMax" | "yTicks"> {
+  if (values.length === 0) return { yMin: 0, yMax: 1, yTicks: [] };
+  let lo = Math.min(...values);
+  let hi = Math.max(...values);
+  // A flat line still needs a scale: open it up around the value.
+  if (hi - lo < Math.abs(hi) * 1e-6 || hi === lo) {
+    const pad = Math.abs(hi) * 0.01 || 1;
+    lo -= pad;
+    hi += pad;
+  }
+  const headroom = (hi - lo) * 0.06;
+  const yMin = lo - headroom;
+  const yMax = hi + headroom;
+
+  const rough = (hi - lo) / 3;
+  const power = 10 ** Math.floor(Math.log10(rough));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * power).find((s) => (hi - lo) / s < 5) ?? 10 * power;
+  const decimals = Math.max(0, -Math.floor(Math.log10(step) + 1e-9) + (step / power === 2.5 ? 1 : 0));
+  const format = new Intl.NumberFormat("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+
+  const yTicks: ChartData["yTicks"] = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) {
+    const rounded = Number(v.toFixed(decimals + 2));
+    yTicks.push({ v: rounded, label: format.format(rounded) });
+  }
+  return { yMin, yMax, yTicks };
 }
 
 /**
