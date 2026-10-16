@@ -482,8 +482,9 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     var w = box.clientWidth, h = box.clientHeight;
     var px = p.x * w;
     var py = (1 - (p.v - c.yMin) / (c.yMax - c.yMin || 1)) * h;
-    var up = c.baseline == null || p.v >= c.baseline;
-    var colour = c.baseline == null ? "#8b8b93" : up ? "#29bd50" : "#ef4b4b";
+    /* The dot is part of the line, so it takes the line's colour; whether this point is above
+       or below the dashed line is the readout's job, in its own green or red. */
+    var colour = c.trend === "down" ? "#ef4b4b" : c.trend === "up" ? "#29bd50" : "#8b8b93";
 
     var line = box.querySelector(".xhair") || box.appendChild(el("div", "xhair"));
     var dot = box.querySelector(".dot") || box.appendChild(el("div", "dot"));
@@ -493,12 +494,12 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     dot.style.top = py.toFixed(1) + "px";
     dot.style.background = colour;
 
-    var meta = readoutTime(p.t, c.range);
+    var meta = el("div", "readout-meta", readoutTime(p.t, c.range));
     if (c.baseline) {
       var pct = (p.v - c.baseline) / c.baseline * 100;
-      meta += " · " + (pct > 0 ? "+" : "") + pct.toFixed(2) + "%";
+      meta.append(" · ", el("span", pct > 0 ? "up" : pct < 0 ? "down" : "flat", (pct > 0 ? "+" : "") + pct.toFixed(2) + "%"));
     }
-    tip.replaceChildren(el("div", "readout-price", formatPrice(p.v)), el("div", "readout-meta", meta));
+    tip.replaceChildren(el("div", "readout-price", formatPrice(p.v)), meta);
     /* Beside the rule, on whichever side has room. */
     var tw = tip.offsetWidth;
     var left = px + 10 + tw > w - 4 ? px - 10 - tw : px + 10;
