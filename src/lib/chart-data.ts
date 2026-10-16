@@ -36,6 +36,8 @@ const HOUR = 3600_000;
 /** Labels nearer an edge than this collide with the edge labels. */
 const EDGE_GAP = 0.12;
 const MAX_TICKS = 5;
+/** Month names are short, so a year fits six of them: every second month. */
+const MAX_MONTH_TICKS = 6;
 
 export function buildChart(series: Series, range: ChartRange): ChartData {
   const { points, times, baseline } = series;
@@ -65,11 +67,14 @@ export function buildChart(series: Series, range: ChartRange): ChartData {
 
   const at = (i: number) => (n === 1 ? 0.5 : i / (n - 1));
   const kind: TickKind = range === "5d" ? "day" : range === "1mo" ? "date" : "month";
-  const boundaries = kind === "month" ? firstOfEach(times, series.utcOffset, monthKey) : firstOfEach(times, series.utcOffset, dayKey);
+  let boundaries = kind === "month" ? firstOfEach(times, series.utcOffset, monthKey) : firstOfEach(times, series.utcOffset, dayKey);
+  // A 6-month or 1-year range starts partway through a month, so its first bar is not "Apr";
+  // only the months that start inside the chart are labelled. Days start at the open, so keep them.
+  if (kind === "month") boundaries = boundaries.filter((i) => i > 0);
   return {
     ...base,
     points: points.map((v, i) => ({ x: at(i), v })),
-    ticks: spread(boundaries, MAX_TICKS).map((i) => ({ x: at(i), t: times[i], kind })),
+    ticks: everyNth(boundaries, kind === "month" ? MAX_MONTH_TICKS : MAX_TICKS).map((i) => ({ x: at(i), t: times[i], kind })),
   };
 }
 
@@ -139,6 +144,15 @@ function firstOfEach(times: number[], utcOffset: number, key: (local: Date) => s
     previous = k;
   });
   return out;
+}
+
+/**
+ * Every k-th item, with k the smallest that keeps it to `max` — a regular rhythm (every month,
+ * every other month), never a gap where one was skipped to make the count.
+ */
+export function everyNth<T>(items: T[], max: number): T[] {
+  const k = Math.max(1, Math.ceil(items.length / max));
+  return items.filter((_, i) => i % k === 0);
 }
 
 /** At most `max` of `items`, evenly spread and always including the first. */

@@ -359,7 +359,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (t.kind === "time") return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     if (t.kind === "day") return d.toLocaleDateString([], { weekday: "short" });
     if (t.kind === "date") return d.toLocaleDateString([], { month: "short", day: "numeric" });
-    return d.toLocaleDateString([], { month: "short" });
+    /* January carries the year instead, so a year-long chart reads across New Year. */
+    return d.getMonth() === 0 ? String(d.getFullYear()) : d.toLocaleDateString([], { month: "short" });
   }
 
   function selectRange(next) {

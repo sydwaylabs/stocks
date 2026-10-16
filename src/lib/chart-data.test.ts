@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildChart, priceScale, sessionTicks, spread } from "./chart-data.js";
+import { buildChart, everyNth, priceScale, sessionTicks, spread } from "./chart-data.js";
 import type { Series } from "./providers/types.js";
 
 const HOUR = 3600_000;
@@ -90,12 +90,29 @@ describe("longer ranges", () => {
     expect(chart.trend).toBe("up");
   });
 
-  it("labels a year by month, at most five of them", () => {
-    const times = Array.from({ length: 250 }, (_, i) => Date.UTC(2025, 9, 17) + i * 1.45 * 24 * HOUR);
-    const chart = buildChart({ points: times.map(() => 1), times, baseline: 1, utcOffset: NY }, "1y");
-    expect(chart.ticks.length).toBe(5);
+  /** Weekday closes from `from` for `days` calendar days, at 16:00 New York. */
+  function daily(from: number, days: number): Series {
+    const times: number[] = [];
+    for (let d = 0; d < days; d++) {
+      const t = from + d * 24 * HOUR;
+      const wd = new Date(t + NY).getUTCDay();
+      if (wd !== 0 && wd !== 6) times.push(t);
+    }
+    return { points: times.map(() => 1), times, baseline: 1, utcOffset: NY };
+  }
+  const month = (t: number) => new Date(t + NY).toISOString().slice(0, 7);
+
+  it("labels six months by every month that starts inside it, skipping none", () => {
+    // Mid-April to mid-October: labels May … Oct, not a partial "Apr" at the edge.
+    const chart = buildChart(daily(Date.UTC(2026, 3, 16, 20), 183), "6mo");
+    expect(chart.ticks.map((t) => month(t.t))).toEqual(["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"]);
     expect(chart.ticks.every((t) => t.kind === "month")).toBe(true);
     expect(chart.trend).toBe("flat");
+  });
+
+  it("labels a year every second month", () => {
+    const chart = buildChart(daily(Date.UTC(2025, 9, 16, 20), 366), "1y");
+    expect(chart.ticks.map((t) => month(t.t))).toEqual(["2025-11", "2026-01", "2026-03", "2026-05", "2026-07", "2026-09"]);
   });
 
   it("draws nothing from an empty series", () => {
@@ -133,6 +150,13 @@ describe("price scale", () => {
     const s = priceScale([100, 100, 100]);
     expect(s.yMax).toBeGreaterThan(s.yMin);
     expect(s.yTicks.length).toBeGreaterThan(0);
+  });
+});
+
+describe("everyNth", () => {
+  it("keeps a regular rhythm", () => {
+    expect(everyNth([1, 2, 3, 4, 5, 6, 7], 6)).toEqual([1, 3, 5, 7]);
+    expect(everyNth([1, 2, 3], 6)).toEqual([1, 2, 3]);
   });
 });
 
