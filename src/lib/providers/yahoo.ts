@@ -118,7 +118,7 @@ export async function fetchChart(symbol: string, fetchImpl?: Fetch): Promise<Cha
 }
 
 /** Bar size per range: about 80–150 points each, enough for a smooth line and no more. */
-const INTERVALS: Record<ChartRange, string> = { "1d": "5m", "5d": "15m", "1mo": "60m", "6mo": "1d", "1y": "1d" };
+const INTERVALS: Record<ChartRange, string> = { "1d": "5m", "5d": "15m", "1mo": "60m", "6mo": "1d", ytd: "1d", "1y": "1d" };
 
 export async function fetchRange(symbol: string, range: ChartRange, fetchImpl?: Fetch): Promise<ChartResult> {
   const url = `${CHART_URL}${encodeURIComponent(symbol)}?range=${range}&interval=${INTERVALS[range]}&includePrePost=false`;

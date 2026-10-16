@@ -19,7 +19,7 @@ notes and the Marketplace "what's new" text are generated from this file.
 - Press to refresh; hold for a window with a chart, day and 52-week ranges, volume, market cap
   and a **Change symbol** button. The chart shows today's session on its own clock — a morning
   fills the first part of it — with times in your time zone, and switches to 5 days, 1 month,
-  6 months or 1 year with the buttons above it or keys 1–5; the change under the price follows
+  6 months, year to date or 1 year with the buttons above it or keys 1–6; the change under the price follows
   the range shown. Hover over it for the price, time and
   change at any point.
 - Works with no account or API key. An optional free Finnhub key, shared by every Stocks key, adds

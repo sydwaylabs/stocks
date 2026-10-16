@@ -157,7 +157,7 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
   <div class="move" id="d-move"></div>
   <div class="chart-head">
     <div class="seg" id="ranges" role="tablist" aria-label="Chart range">
-      <button data-range="1d" class="on" role="tab">1D</button><button data-range="5d" role="tab">5D</button><button data-range="1mo" role="tab">1M</button><button data-range="6mo" role="tab">6M</button><button data-range="1y" role="tab">1Y</button>
+      <button data-range="1d" class="on" role="tab">1D</button><button data-range="5d" role="tab">5D</button><button data-range="1mo" role="tab">1M</button><button data-range="6mo" role="tab">6M</button><button data-range="ytd" role="tab">YTD</button><button data-range="1y" role="tab">1Y</button>
     </div>
     <span class="chart-caption" id="chart-caption"></span>
   </div>
@@ -286,7 +286,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       fit();
     } else {
       $("chip").textContent = symbol;
-      setFooter([["1–5", "range"], ["r", "refresh"], ["s", "change symbol"], ["esc", "close"]]);
+      setFooter([["1–6", "range"], ["r", "refresh"], ["s", "change symbol"], ["esc", "close"]]);
       loadDetail();
       poll = setInterval(loadDetail, 30000);
     }
@@ -360,7 +360,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     return e;
   }
 
-  var RANGE_NAMES = { "1d": "today", "5d": "past 5 days", "1mo": "past month", "6mo": "past 6 months", "1y": "past year" };
+  var RANGE_NAMES = { "1d": "today", "5d": "past 5 days", "1mo": "past month", "6mo": "past 6 months", ytd: "year to date", "1y": "past year" };
 
   function sameLocalDay(a, b) {
     var x = new Date(a), y = new Date(b);
@@ -653,8 +653,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === "r") { rangeCharts = {}; loadDetail(); if (range !== "1d") selectRange(range); }
-    var digit = ["1", "2", "3", "4", "5"].indexOf(e.key);
-    if (digit >= 0) selectRange(["1d", "5d", "1mo", "6mo", "1y"][digit]);
+    var digit = ["1", "2", "3", "4", "5", "6"].indexOf(e.key);
+    if (digit >= 0) selectRange(["1d", "5d", "1mo", "6mo", "ytd", "1y"][digit]);
     if (e.key === "s") { e.preventDefault(); show("search"); }
   });
 

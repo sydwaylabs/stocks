@@ -67,11 +67,14 @@ export function buildChart(series: Series, range: ChartRange): ChartData {
   }
 
   const at = (i: number) => (n === 1 ? 0.5 : i / (n - 1));
-  const kind: TickKind = range === "5d" ? "day" : range === "1mo" ? "date" : "month";
+  // Year to date is months, except in its first weeks, when it is labelled by date like a month.
+  const shortYtd = range === "ytd" && n > 1 && times[n - 1] - times[0] < 45 * 24 * HOUR;
+  const kind: TickKind = range === "5d" ? "day" : range === "1mo" || shortYtd ? "date" : "month";
   let boundaries = kind === "month" ? firstOfEach(times, series.utcOffset, monthKey) : firstOfEach(times, series.utcOffset, dayKey);
   // A 6-month or 1-year range starts partway through a month, so its first bar is not "Apr";
   // only the months that start inside the chart are labelled. Days start at the open, so keep them.
-  if (kind === "month") boundaries = boundaries.filter((i) => i > 0);
+  // Year to date starts on a month (January), so its first label is real; keep it.
+  if (kind === "month" && range !== "ytd") boundaries = boundaries.filter((i) => i > 0);
   return {
     ...base,
     points: points.map((v, i) => ({ x: at(i), v, t: times[i] })),

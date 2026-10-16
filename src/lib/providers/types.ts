@@ -59,7 +59,7 @@ export type Series = {
 };
 
 /** The spans the window's chart offers. The key's sparkline is always "1d". */
-export const CHART_RANGES = ["1d", "5d", "1mo", "6mo", "1y"] as const;
+export const CHART_RANGES = ["1d", "5d", "1mo", "6mo", "ytd", "1y"] as const;
 export type ChartRange = (typeof CHART_RANGES)[number];
 
 export type SearchResult = {

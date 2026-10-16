@@ -115,6 +115,17 @@ describe("longer ranges", () => {
     expect(chart.trend).toBe("flat");
   });
 
+  it("labels year to date from January, which carries the year", () => {
+    const chart = buildChart(daily(Date.UTC(2026, 0, 2, 21), 288), "ytd");
+    expect(chart.ticks.map((t) => month(t.t))).toEqual(["2026-01", "2026-03", "2026-05", "2026-07", "2026-09"]);
+    expect(chart.ticks[0].x).toBe(0);
+  });
+
+  it("labels early January's year to date by date", () => {
+    const chart = buildChart(daily(Date.UTC(2026, 0, 2, 21), 20), "ytd");
+    expect(chart.ticks.every((t) => t.kind === "date")).toBe(true);
+  });
+
   it("labels a year every second month", () => {
     const chart = buildChart(daily(Date.UTC(2025, 9, 16, 20), 366), "1y");
     expect(chart.ticks.map((t) => month(t.t))).toEqual(["2025-11", "2026-01", "2026-03", "2026-05", "2026-07", "2026-09"]);
