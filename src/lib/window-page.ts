@@ -92,7 +92,13 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .chart-caption { color: var(--fg-dim); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 /* Plot and price scale side by side; the time axis sits under the plot only. */
 .chart-grid { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; }
-.chart { background: var(--card); border: 1px solid var(--card-line); border-radius: 8px; height: 150px; overflow: hidden; }
+.chart { position: relative; background: var(--card); border: 1px solid var(--card-line); border-radius: 8px; height: 150px; overflow: hidden; cursor: crosshair; }
+/* Hover: a rule at the nearest bar, a dot on the line, and a readout that stays inside the plot. */
+.xhair { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--fg-faint); pointer-events: none; }
+.dot { position: absolute; width: 9px; height: 9px; margin: -6px 0 0 -6px; border-radius: 50%; border: 2px solid var(--card); pointer-events: none; }
+.readout { position: absolute; top: 6px; padding: 4px 8px; border-radius: 6px; background: #1e1e1e; border: 1px solid var(--card-line); box-shadow: var(--shadow-lift, 0 6px 18px rgba(0,0,0,.45)); pointer-events: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.readout-price { font-weight: 650; font-size: 13px; }
+.readout-meta { color: var(--fg-dim); font-size: 11px; }
 .yaxis { position: relative; min-width: 40px; margin: 1px 0; }
 .ytick { position: absolute; right: 0; transform: translateY(-50%); color: var(--fg-faint); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .chart svg { display: block; width: 100%; height: 100%; }
@@ -199,6 +205,9 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   var range = "1d";
   var chart1d = null;
   var rangeCharts = {};
+  /* What is drawn now, and where the pointer is over it (0–1), so a redraw keeps the crosshair. */
+  var shown = null;
+  var hoverAt = null;
   var fitTimer = 0;
 
   var $ = function (id) { return document.getElementById(id); };
@@ -384,6 +393,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   }
 
   function chartNotice(text) {
+    shown = null;
     $("d-chart").replaceChildren(el("div", "chart-empty", text));
     $("d-axis").replaceChildren();
     $("d-yaxis").replaceChildren();
@@ -394,7 +404,9 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
 
   function renderChart(c) {
     if (!c || c.points.length < 2) { chartNotice("No chart data"); return; }
+    shown = c;
     drawChart($("d-chart"), c);
+    if (hoverAt !== null) hover(hoverAt);
 
     var yaxis = $("d-yaxis");
     yaxis.replaceChildren();
@@ -429,6 +441,78 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       caption.textContent = [c.changePct, RANGE_NAMES[c.range]].join(" ").trim();
     }
   }
+
+  /* ---- hover ---- */
+
+  /* The bar nearest a position across the plot. Points are in x order, so a binary search. */
+  function nearest(points, f) {
+    var lo = 0, hi = points.length - 1;
+    while (hi - lo > 1) {
+      var mid = (lo + hi) >> 1;
+      if (points[mid].x < f) lo = mid; else hi = mid;
+    }
+    return f - points[lo].x <= points[hi].x - f ? points[lo] : points[hi];
+  }
+
+  function formatPrice(v) {
+    return Math.abs(v) >= 1
+      ? v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : v.toPrecision(4);
+  }
+
+  function readoutTime(t, r) {
+    var d = new Date(t);
+    var time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    if (r === "1d") return time;
+    if (r === "5d") return d.toLocaleDateString([], { weekday: "short" }) + " " + time;
+    if (r === "1mo") return d.toLocaleDateString([], { month: "short", day: "numeric" }) + ", " + time;
+    return d.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function hover(f) {
+    var box = $("d-chart");
+    var c = shown;
+    if (!c) return;
+    var p = nearest(c.points, f);
+    var w = box.clientWidth, h = box.clientHeight;
+    var px = p.x * w;
+    var py = (1 - (p.v - c.yMin) / (c.yMax - c.yMin || 1)) * h;
+    var up = c.baseline == null || p.v >= c.baseline;
+    var colour = c.baseline == null ? "#8b8b93" : up ? "#29bd50" : "#ef4b4b";
+
+    var line = box.querySelector(".xhair") || box.appendChild(el("div", "xhair"));
+    var dot = box.querySelector(".dot") || box.appendChild(el("div", "dot"));
+    var tip = box.querySelector(".readout") || box.appendChild(el("div", "readout"));
+    line.style.left = px.toFixed(1) + "px";
+    dot.style.left = px.toFixed(1) + "px";
+    dot.style.top = py.toFixed(1) + "px";
+    dot.style.background = colour;
+
+    var meta = readoutTime(p.t, c.range);
+    if (c.baseline) {
+      var pct = (p.v - c.baseline) / c.baseline * 100;
+      meta += " · " + (pct > 0 ? "+" : "") + pct.toFixed(2) + "%";
+    }
+    tip.replaceChildren(el("div", "readout-price", formatPrice(p.v)), el("div", "readout-meta", meta));
+    /* Beside the rule, on whichever side has room. */
+    var tw = tip.offsetWidth;
+    var left = px + 10 + tw > w - 4 ? px - 10 - tw : px + 10;
+    tip.style.left = Math.max(4, left).toFixed(0) + "px";
+  }
+
+  function unhover() {
+    hoverAt = null;
+    var box = $("d-chart");
+    [".xhair", ".dot", ".readout"].forEach(function (s) { var n = box.querySelector(s); if (n) n.remove(); });
+  }
+
+  $("d-chart").addEventListener("pointermove", function (e) {
+    if (!shown) return;
+    var rect = this.getBoundingClientRect();
+    hoverAt = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    hover(hoverAt);
+  });
+  $("d-chart").addEventListener("pointerleave", unhover);
 
   function drawChart(box, c) {
     box.replaceChildren();

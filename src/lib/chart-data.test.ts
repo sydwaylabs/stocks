@@ -34,6 +34,11 @@ describe("one-day chart", () => {
     expect(chart.sessionStart).toBe(OPEN);
   });
 
+  it("keeps each bar's time for the hover readout", () => {
+    const chart = buildChart(nyDay(3), "1d");
+    expect(chart.points.map((p) => p.t)).toEqual([OPEN, OPEN + 5 * MIN, OPEN + 10 * MIN]);
+  });
+
   it("fills the width once the session is over", () => {
     const chart = buildChart(nyDay(79), "1d");
     expect(chart.points.at(-1)!.x).toBe(1);

@@ -16,7 +16,8 @@ export type TickKind = "time" | "day" | "date" | "month";
 
 export type ChartData = {
   range: ChartRange;
-  points: { x: number; v: number }[];
+  /** `t` is the bar's epoch-ms time, for the hover readout. */
+  points: { x: number; v: number; t: number }[];
   /** The previous close (1D) or the close before the range began: the dashed line. */
   baseline?: number;
   ticks: { x: number; t: number; kind: TickKind }[];
@@ -58,7 +59,7 @@ export function buildChart(series: Series, range: ChartRange): ChartData {
     const at = (t: number) => clamp((t - start) / span);
     return {
       ...base,
-      points: points.map((v, i) => ({ x: at(times[i]), v })),
+      points: points.map((v, i) => ({ x: at(times[i]), v, t: times[i] })),
       ticks: sessionTicks(start, end, series.utcOffset).map((t) => ({ x: at(t), t, kind: "time" as const })),
       sessionStart: start,
       sessionEnd: end,
@@ -73,7 +74,7 @@ export function buildChart(series: Series, range: ChartRange): ChartData {
   if (kind === "month") boundaries = boundaries.filter((i) => i > 0);
   return {
     ...base,
-    points: points.map((v, i) => ({ x: at(i), v })),
+    points: points.map((v, i) => ({ x: at(i), v, t: times[i] })),
     ticks: everyNth(boundaries, kind === "month" ? MAX_MONTH_TICKS : MAX_TICKS).map((i) => ({ x: at(i), t: times[i], kind })),
   };
 }
