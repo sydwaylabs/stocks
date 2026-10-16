@@ -14,7 +14,9 @@ A Stream Deck plugin by Sydway Labs, for macOS 12 or later and Stream Deck 6.9 o
 Each key shows one symbol — a stock, ETF, fund, index or coin — with its price, today's change
 and a sparkline of the day. Drag a Ticker onto a key, press it, type a company name ("apple",
 "vanguard s&p", "bitcoin") and pick from the results; there is no need to know the ticker. A
-symbol can also be typed straight into the key's settings, which also set how often it refreshes
+symbol can also be typed straight into the key's settings — Yahoo's spelling, so Toronto listings
+end in `.TO` (`RY.TO`), the TSX Venture in `.V`, London in `.L`, and the S&P/TSX Composite is
+`^GSPTSE`. The key's settings also set how often it refreshes
 (1, 5 or 15 minutes), whether it shows the price or only the change, and whether the change is
 shown as a percentage (+1.23%) or an amount (+$4.20).
 

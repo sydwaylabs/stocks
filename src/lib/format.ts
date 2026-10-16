@@ -41,8 +41,11 @@ export function formatChange(change: number | undefined): string {
   return `${change > 0 ? "+" : change < 0 ? "-" : ""}${text}`;
 }
 
-/** Currencies whose sign fits on a key; anything else shows the bare number. */
-const CURRENCY_SIGNS: Record<string, string> = { USD: "$", EUR: "€", GBP: "£", JPY: "¥", CAD: "$", AUD: "$", HKD: "$", INR: "₹" };
+/**
+ * Currencies whose sign fits on a key; anything else shows the bare number. Only US dollars get a
+ * bare "$" — a Toronto key reading "+$1.46" would look like US dollars.
+ */
+const CURRENCY_SIGNS: Record<string, string> = { USD: "$", CAD: "C$", AUD: "A$", HKD: "HK$", EUR: "€", GBP: "£", JPY: "¥", INR: "₹" };
 
 /**
  * Today's move as an amount for the key: `+$1.46`, `-£0.52`, `-$1,234`. Kept to about eight
