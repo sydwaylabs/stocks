@@ -8,7 +8,34 @@ A Stream Deck plugin by Sydway Labs, for macOS 12 or later and Stream Deck 6.9 o
 
 | Action | Press | Hold |
 |---|---|---|
-| **Ticker** | What one press does | What a hold does |
+| **Ticker** (symbol set) | Refresh now | Open the detail window: intraday chart, day and 52-week ranges, volume, market cap, and **Change symbol** |
+| **Ticker** (empty key) | Open search | Open search |
+
+Each key shows one symbol — a stock, ETF, fund, index or coin — with its price, today's change
+and a sparkline of the day. Drag a Ticker onto a key, press it, type a company name ("apple",
+"vanguard s&p", "bitcoin") and pick from the results; there is no need to know the ticker. A
+symbol can also be typed straight into the key's settings, which also set how often it refreshes
+(1, 5 or 15 minutes) and whether it shows the price or only the change.
+
+A refresh only reads public quotes, so a tap is safe to act on; the hold opens the window, as on
+every Sydway Labs key. A key whose numbers are more than two refreshes old is drawn dimmed.
+
+## Where the numbers come from
+
+- **Out of the box: Yahoo Finance.** No account, no key. Yahoo's chart and search endpoints are
+  unofficial — they are what Yahoo's own site uses — so quotes may be delayed by up to 15 minutes
+  for some exchanges, and Yahoo could change them without notice.
+- **Optional: a free [Finnhub](https://finnhub.io/register) key**, pasted into any Stocks key's
+  settings and shared by all of them. With a key, prices come from Finnhub's official API wherever
+  it covers the symbol (mostly US listings on the free plan), market cap and the 52-week range come
+  from Finnhub, and Yahoo fills in everything else — the sparkline, and any symbol Finnhub does not
+  price. If Yahoo ever stops answering, a key keeps US quotes working.
+- **Market cap without a key** comes from Nasdaq's quote summary, for US-listed stocks only.
+
+The key is checked with Finnhub before it is saved, then stored in the plugin's global settings
+**encrypted** with a key kept in your login keychain. That keeps it out of Stream Deck profile
+exports, sync folders and backups. It is not protection from other software running as you on
+this Mac.
 
 ## Install
 
@@ -34,6 +61,7 @@ npm run watch           # rebuilds and restarts the plugin on save
 | `npm test` | Unit tests for `src/lib/` |
 | `npm run typecheck` | `tsc --noEmit` — the build alone does not catch type errors |
 | `npm run release` | typecheck → test → build → native host → pack → verify |
+| `npm run icons` | Re-render the static icons from `assets/icons/*.svg` |
 
 Logs: `com.sydwaylabs.stocks.sdPlugin/logs/com.sydwaylabs.stocks.0.log`.
 

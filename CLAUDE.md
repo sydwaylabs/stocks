@@ -20,5 +20,24 @@ A Stream Deck plugin (`com.sydwaylabs.stocks`), built from streamdeck-kit.
 
 ## This plugin
 
-<!-- What is specific to this plugin: its actions, its settings, anything learned the hard way.
-     When something here would apply to every plugin, fold it back into the kit with /streamdeck-kit:sd-harvest. -->
+One action, **Ticker** (`com.sydwaylabs.stocks.ticker`): a quote per key, drawn as SVG
+(`src/lib/key-image.ts`). Tap refreshes (a read-only request, so the tap may act), hold opens the
+window; an empty key opens search on any press.
+
+- **Data**: `src/lib/quotes.ts` chooses sources; parsers live in `src/lib/providers/` and are
+  tested against fixtures captured from the live endpoints. Yahoo `v8/finance/chart` and
+  `v1/finance/search` are keyless; `v7/quote` and `v10/quoteSummary` need a crumb and are not used.
+  Nasdaq `api/quote/<sym>/summary` gives US market cap. Finnhub is optional; 401 means a bad key,
+  403 means a good key without access to that symbol — only 401 is reported to the user.
+- **User agent** (`src/lib/providers/http.ts`): a plain `SydwayLabsStocks/1.0` string. A full
+  Safari or Chrome UA from Node gets 429 from Yahoo, and a UA containing a URL makes Nasdaq hang.
+  Both measured 2026-10-16; if either endpoint starts failing, check the UA first.
+- **Finnhub key**: global settings, sealed with the keychain collection key
+  (`patterns/keychain-secret-store`, `--collection-key` mode in `native/host.swift`). The inspector
+  never binds it to a setting; it sends `setFinnhubKey` and the plugin checks, seals and stores.
+- **Window**: one page, two views (`src/lib/window-page.ts`). `select` is accepted only for a
+  symbol in the last search results (`SearchSession`).
+- **Refresh**: the shared ticker (`src/tick.ts`), one subscription per key; the quote cache
+  (20 s) makes keys on the same symbol share one request.
+- The Finnhub fixtures in `providers.test.ts` are written from the API docs, not captured —
+  capture real ones when a key is to hand.

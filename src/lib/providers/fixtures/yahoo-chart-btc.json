@@ -1,0 +1,150 @@
+{
+ "chart": {
+  "result": [
+   {
+    "meta": {
+     "currency": "USD",
+     "symbol": "BTC-USD",
+     "exchangeName": "CCC",
+     "fullExchangeName": "CCC",
+     "instrumentType": "CRYPTOCURRENCY",
+     "firstTradeDate": 1410912000,
+     "regularMarketTime": 1792183995,
+     "hasPrePostMarketData": false,
+     "gmtoffset": 0,
+     "timezone": "UTC",
+     "exchangeTimezoneName": "UTC",
+     "regularMarketPrice": 81651.17,
+     "regularMarketChangePercent": -0.453,
+     "fulldayPrice": 81651.17,
+     "fulldayChange": -371.625,
+     "fulldayChangePercent": -0.453,
+     "fiftyTwoWeekHigh": 116273.31,
+     "fiftyTwoWeekLow": 57747.766,
+     "regularMarketDayHigh": 82717.27,
+     "regularMarketDayLow": 80735.26,
+     "regularMarketVolume": 27616387072,
+     "longName": "Bitcoin USD",
+     "shortName": "Bitcoin USD",
+     "chartPreviousClose": 82132.23,
+     "previousClose": 82132.23,
+     "scale": 3,
+     "priceHint": 2,
+     "currentTradingPeriod": {
+      "pre": {
+       "timezone": "UTC",
+       "start": 1792108800,
+       "end": 1792108800,
+       "gmtoffset": 0
+      },
+      "regular": {
+       "timezone": "UTC",
+       "start": 1792108800,
+       "end": 1792195140,
+       "gmtoffset": 0
+      },
+      "post": {
+       "timezone": "UTC",
+       "start": 1792195140,
+       "end": 1792195140,
+       "gmtoffset": 0
+      }
+     },
+     "dataGranularity": "5m",
+     "range": "1d"
+    },
+    "timestamp": [
+     1792108800,
+     1792109100,
+     1792109400,
+     1792109700,
+     1792110000,
+     1792110300,
+     1792110600,
+     1792110900,
+     1792111200,
+     1792111500,
+     1792111800,
+     1792112100
+    ],
+    "indicators": {
+     "quote": [
+      {
+       "close": [
+        82172.640625,
+        82230.2265625,
+        82262.328125,
+        null,
+        82158.9609375,
+        82291.5234375,
+        82210.453125,
+        82339.2109375,
+        82314.8671875,
+        82222.3671875,
+        82181.15625,
+        82231.46875
+       ],
+       "open": [
+        82126.3515625,
+        82180.03125,
+        82220.9921875,
+        82265.6875,
+        82278.359375,
+        82158.9609375,
+        82297.4921875,
+        82220.140625,
+        82339.2109375,
+        82314.8828125,
+        82226.2265625,
+        82187.8828125
+       ],
+       "high": [
+        82180.3125,
+        82277.6328125,
+        82285.3203125,
+        82300.390625,
+        82278.359375,
+        82294.34375,
+        82346.890625,
+        82349.390625,
+        82366.6796875,
+        82314.8828125,
+        82275.6484375,
+        82251.078125
+       ],
+       "low": [
+        82103.7265625,
+        82178.4609375,
+        82220.9765625,
+        82225.6015625,
+        82146.96875,
+        82149.1171875,
+        82198.828125,
+        82217.09375,
+        82287.0625,
+        82204.5703125,
+        82158.9375,
+        82187.8828125
+       ],
+       "volume": [
+        29016064,
+        47906816,
+        62521344,
+        158031872,
+        0,
+        148557824,
+        60698624,
+        1076989952,
+        52117504,
+        188526592,
+        14340096,
+        58806272
+       ]
+      }
+     ]
+    }
+   }
+  ],
+  "error": null
+ }
+}

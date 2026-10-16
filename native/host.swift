@@ -1,6 +1,7 @@
 import AppKit
 import WebKit
 import UniformTypeIdentifiers
+import Security
 
 //
 // A native window host for a Stream Deck plugin.
@@ -16,6 +17,7 @@ import UniformTypeIdentifiers
 //   host --app=<url> [--window-size=W,H] [--title=<text>] [--no-focus]
 //   host --save-panel [--name=<filename>] [--prompt=<text>] [--file-type=<ext>]
 //   host --open-panel [--prompt=<text>] [--file-type=<ext>]
+//   host --collection-key
 //
 // Exits non-zero on a bad invocation; exits 0 when the window closes or a panel is answered.
 //
@@ -435,7 +437,76 @@ private func runFilePanel(saving: Bool) -> String? {
     return panel.runModal() == .OK ? panel.url?.path : nil
 }
 
+// MARK: - collection key
+
+// `--collection-key` prints the plugin's 32-byte key, base64, on stdout, minting it in the login
+// keychain on first use. It seals the Finnhub API key in global settings.
+//
+// The key goes to **stdout, never argv**: arguments are visible to every process via `ps`. That
+// is also why the plugin must not shell out to `security add-generic-password -w`.
+//
+// **What this is worth, measured rather than assumed.** The item is not access-controlled, and
+// cannot be until the host is signed with a Developer ID. An unrelated binary reads an item like
+// this with no prompt at all. Gating on user presence needs a `keychain-access-groups`
+// entitlement (which needs a team identity), and a legacy ACL with an empty trusted-application
+// list refuses *every* reader including this one. So the key buys exactly this: the secret is not
+// in the Stream Deck profile, and a profile export, sync folder or backup carries ciphertext.
+
+private let keyService = "com.sydwaylabs.stocks"   // the plugin id
+private let keyAccount = "collection-key"
+
+private func loadCollectionKey() -> Data? {
+    let query: [String: Any] = [
+        kSecClass as String: kSecClassGenericPassword,
+        kSecAttrService as String: keyService,
+        kSecAttrAccount as String: keyAccount,
+        kSecReturnData as String: true,
+    ]
+    var out: CFTypeRef?
+    guard SecItemCopyMatching(query as CFDictionary, &out) == errSecSuccess else { return nil }
+    return out as? Data
+}
+
+private func createCollectionKey() -> Data? {
+    var key = Data(count: 32)
+    let generated = key.withUnsafeMutableBytes { buf -> OSStatus in
+        guard let base = buf.baseAddress else { return errSecAllocate }
+        return SecRandomCopyBytes(kSecRandomDefault, 32, base)
+    }
+    guard generated == errSecSuccess else {
+        log("could not generate a collection key: \(generated)")
+        return nil
+    }
+    let add: [String: Any] = [
+        kSecClass as String: kSecClassGenericPassword,
+        kSecAttrService as String: keyService,
+        kSecAttrAccount as String: keyAccount,
+        kSecValueData as String: key,
+        kSecAttrLabel as String: "\(keyService) collection key",
+        // Deliberately ThisDeviceOnly: a key that synced to iCloud would put every sealed value
+        // within reach of any device on the same account — wider than the profile it protects.
+        kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+    ]
+    let status = SecItemAdd(add as CFDictionary, nil)
+    // Two hosts can race on first use. A duplicate means the other one won, so take its key
+    // rather than failing: minting a second would strand whatever the first has already sealed.
+    if status == errSecDuplicateItem { return loadCollectionKey() }
+    guard status == errSecSuccess else {
+        log("could not store the collection key: \(status)")
+        return nil
+    }
+    return key
+}
+
+
 // MARK: - entry point
+
+/// Prints the 32-byte key that seals secrets in settings; see src/lib/secret-store.ts.
+if CommandLine.arguments.contains("--collection-key") {
+    guard let key = loadCollectionKey() ?? createCollectionKey() else { exit(3) }
+    FileHandle.standardOutput.write(key.base64EncodedString().data(using: .utf8)!)
+    exit(0)
+}
 
 /*
  * Panel modes need AppKit but no web view, and exit as soon as the dialog is answered. Cancelling
@@ -454,6 +525,7 @@ guard let raw = flagValue("app"), let url = URL(string: raw), url.scheme != nil 
         usage: \(hostName) --app=<url> [--window-size=W,H] [--title=<text>] [--no-focus]
                \(hostName) --save-panel [--name=<filename>] [--prompt=<text>] [--file-type=<ext>]
                \(hostName) --open-panel [--prompt=<text>] [--file-type=<ext>]
+               \(hostName) --collection-key
 
         """.data(using: .utf8)!)
     exit(2)

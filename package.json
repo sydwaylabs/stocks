@@ -1,7 +1,7 @@
 {
     "name": "stocks",
     "version": "0.1.0",
-    "description": "Live stock, ETF and crypto quotes on your keys — works out of the box, with an optional free Finnhub key.",
+    "description": "Live stock, ETF and crypto quotes on your keys \u2014 works out of the box, with an optional free Finnhub key.",
     "author": "Sydway Labs",
     "homepage": "https://github.com/sydwaylabs/stocks",
     "private": true,
@@ -15,6 +15,7 @@
         "typecheck": "tsc --noEmit",
         "pack": "streamdeck pack com.sydwaylabs.stocks.sdPlugin --force",
         "verify": "node scripts/verify-package.mjs",
+        "icons": "node scripts/render-icons.mjs",
         "release": "npm run typecheck && npm test && npm run build && npm run build:native && npm run pack && npm run verify"
     },
     "devDependencies": {

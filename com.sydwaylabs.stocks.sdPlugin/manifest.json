@@ -14,23 +14,20 @@
 			"Name": "Ticker",
 			"UUID": "com.sydwaylabs.stocks.ticker",
 			"Icon": "imgs/actions/ticker/icon",
-			"Tooltip": "What one press does, and what a hold does.",
+			"Tooltip": "Shows a live quote. Press to refresh, hold for details. On an empty key, press to search for a symbol.",
 			"PropertyInspectorPath": "ui/ticker.html",
 			"Controllers": [
 				"Keypad"
 			],
 			"States": [
 				{
-					"Image": "imgs/actions/ticker/empty",
+					"Image": "imgs/actions/ticker/key",
 					"TitleAlignment": "middle",
-					"Name": "Empty"
-				},
-				{
-					"Image": "imgs/actions/ticker/filled",
-					"TitleAlignment": "middle",
-					"Name": "Filled"
+					"Name": "Quote"
 				}
-			]
+			],
+			"SupportedInMultiActions": false,
+			"UserTitleEnabled": false
 		}
 	],
 	"CodePath": "bin/plugin.js",
