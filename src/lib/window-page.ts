@@ -18,8 +18,8 @@ export type WindowInit = {
   windowTitle: string;
 };
 
-export const WINDOW_WIDTH = 440;
-export const WINDOW_HEIGHT = 660;
+export const WINDOW_WIDTH = 640;
+export const WINDOW_HEIGHT = 570;
 
 /** JSON that is safe inside a script block: `</script>` in data cannot end it. */
 export function scriptJson(value: unknown): string {
@@ -72,7 +72,8 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .name-row { display: flex; align-items: center; gap: 8px; margin: 0 0 2px; min-width: 0; }
 .logo { width: 20px; height: 20px; border-radius: 4px; background: #fff; object-fit: contain; flex: 0 0 auto; }
 .name { color: var(--fg-dim); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.company { color: var(--fg-faint); font-size: 12px; margin: 10px 0 0; display: flex; gap: 10px; align-items: center; }
+.company { color: var(--fg-faint); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.name-row .spacer { flex: 1; }
 .link { background: none; border: none; padding: 0; color: var(--series); font-size: 12px; }
 .link:hover { text-decoration: underline; }
 .price-row { display: flex; align-items: baseline; gap: 10px; }
@@ -80,18 +81,20 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .ccy { color: var(--fg-dim); font-size: 13px; }
 .move { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .up { color: var(--good); } .down { color: var(--down); } .flat { color: var(--fg-dim); }
-.chart { margin: 12px 0 4px; background: var(--card); border: 1px solid var(--card-line); border-radius: 8px; height: 140px; }
+.chart { margin: 12px 0 4px; background: var(--card); border: 1px solid var(--card-line); border-radius: 8px; height: 150px; }
 .chart svg { display: block; width: 100%; height: 100%; }
 .chart-empty { height: 100%; display: flex; align-items: center; justify-content: center; color: var(--fg-faint); }
-.range { margin: 12px 0; }
+/* Two columns: the ranges side by side, then the stats in pairs. */
+.ranges { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; }
+.range { margin: 12px 0; min-width: 0; }
 .range-head { display: flex; justify-content: space-between; color: var(--fg-dim); font-size: 12px; margin-bottom: 5px; font-variant-numeric: tabular-nums; }
 .range-head span:first-child { color: var(--fg); }
 .track { position: relative; height: 4px; border-radius: 2px; background: var(--card-line); }
 .marker { position: absolute; top: -4px; width: 4px; height: 12px; margin-left: -2px; border-radius: 2px; background: var(--fg); }
-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-td { padding: 6px 0; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
-td:last-child { text-align: right; }
-td:first-child { color: var(--fg-dim); }
+.stats { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; margin-top: 6px; }
+.stat { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; line-height: 18px; min-width: 0; }
+.stat dt { color: var(--fg-dim); white-space: nowrap; }
+.stat dd { margin: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meta { color: var(--fg-faint); font-size: 11px; margin-top: 10px; }
 .note { color: var(--slow); font-size: 12px; margin-top: 8px; }
 .notice { color: var(--fg-dim); padding: 30px 10px; text-align: center; }
@@ -122,13 +125,18 @@ td:first-child { color: var(--fg-dim); }
 </div>
 
 <main id="detail" hidden>
-  <div class="name-row"><img class="logo" id="d-logo" alt="" hidden><p class="name" id="d-name"></p></div>
+  <div class="name-row">
+    <img class="logo" id="d-logo" alt="" hidden>
+    <p class="name" id="d-name"></p>
+    <span class="company" id="d-company"></span>
+    <span class="spacer"></span>
+    <button class="link" id="d-web" hidden>Website</button>
+  </div>
   <div class="price-row"><span class="price" id="d-price"></span><span class="ccy" id="d-ccy"></span></div>
   <div class="move" id="d-move"></div>
   <div class="chart" id="d-chart"></div>
-  <div id="d-ranges"></div>
-  <table><tbody id="d-rows"></tbody></table>
-  <p class="company" id="d-company-row" hidden><span id="d-company"></span><button class="link" id="d-web" hidden>Website</button></p>
+  <div class="ranges" id="d-ranges"></div>
+  <dl class="stats" id="d-rows"></dl>
   <p class="note" id="d-note" hidden></p>
   <p class="meta" id="d-meta"></p>
 </main>
@@ -267,9 +275,9 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     var rows = $("d-rows");
     rows.replaceChildren();
     d.rows.forEach(function (r) {
-      var tr = el("tr");
-      tr.append(el("td", "", r.label), el("td", "", r.value));
-      rows.append(tr);
+      var item = el("div", "stat");
+      item.append(el("dt", "", r.label), el("dd", "", r.value));
+      rows.append(item);
     });
 
     var logo = $("d-logo");
@@ -277,9 +285,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     logo.hidden = !d.logo;
     logo.onerror = function () { logo.hidden = true; };
     website = d.website || "";
-    $("d-company").textContent = d.company || "";
+    $("d-company").textContent = d.company ? "· " + d.company : "";
     $("d-web").hidden = !website;
-    $("d-company-row").hidden = !d.company && !website;
 
     var note = $("d-note");
     note.hidden = !d.note;
@@ -305,7 +312,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       box.append(el("div", "chart-empty", "No intraday data"));
       return;
     }
-    var W = 400, H = 140, P = 10;
+    var W = 600, H = 150, P = 10;
     var values = prevClose != null ? points.concat([prevClose]) : points;
     var lo = Math.min.apply(null, values), hi = Math.max.apply(null, values);
     var span = hi - lo || 1;
