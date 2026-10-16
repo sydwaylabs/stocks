@@ -55,9 +55,9 @@ export type SearchResult = {
 };
 
 /**
- * `unauthorized` is a bad key (HTTP 401). `no-access` is a good key asking for something its plan
- * does not cover (HTTP 403) — Finnhub's free tier and most non-US listings — which is a reason to
- * fall back, not to tell the user their key is wrong.
+ * `unauthorized` is a bad key. `no-access` is a good key asking for something its plan does not
+ * cover — Finnhub's free tier and most non-US listings — which is a reason to fall back, not to
+ * tell the user their key is wrong. See getJson for how the two are told apart.
  */
 export type ProviderErrorKind = "not-found" | "unauthorized" | "no-access" | "rate-limited" | "unavailable";
 

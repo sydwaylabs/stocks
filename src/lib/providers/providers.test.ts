@@ -158,12 +158,17 @@ describe("getJson", () => {
   };
 
   it("maps status codes", async () => {
-    expect(await kindOfAsync(getJson("u", { fetchImpl: respond(401, "{}") }))).toBe("unauthorized");
+    expect(await kindOfAsync(getJson("u", { fetchImpl: respond(401, '{"error":"Invalid API key."}') }))).toBe("unauthorized");
     expect(await kindOfAsync(getJson("u", { fetchImpl: respond(403, "{}") }))).toBe("no-access");
     expect(await kindOfAsync(getJson("u", { fetchImpl: respond(429, "{}") }))).toBe("rate-limited");
     expect(await kindOfAsync(getJson("u", { fetchImpl: respond(500, "{}") }))).toBe("unavailable");
     expect(await kindOfAsync(getJson("u", { fetchImpl: respond(200, "<html>") }))).toBe("unavailable");
     expect(await kindOfAsync(getJson("u", { fetchImpl: respond(404, "<html>") }))).toBe("not-found");
+  });
+
+  it("tells a bad Finnhub key from a good one without access", async () => {
+    expect(await kindOfAsync(getJson("u", { fetchImpl: respond(401, '{"error":"Invalid API key."}') }))).toBe("unauthorized");
+    expect(await kindOfAsync(getJson("u", { fetchImpl: respond(401, '{"error":"You don\'t have access to this resource."}') }))).toBe("no-access");
   });
 
   it("passes a JSON 404 through for the parser to read", async () => {

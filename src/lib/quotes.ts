@@ -53,7 +53,10 @@ const FUNDAMENTALS_TTL_MS = 60 * 60_000;
 /** The earnings date for the key's badge; asked for once every few hours per symbol. */
 const EARNINGS_TTL_MS = 6 * 60 * 60_000;
 
-/** Nasdaq only knows plain US tickers — no exchange suffix, index caret, pair or future. */
+/**
+ * A plain US ticker — no exchange suffix, index caret, pair or future. The only symbols Nasdaq
+ * knows, and the only ones Finnhub's free plan prices.
+ */
 const US_TICKER = /^[A-Z]{1,5}$/;
 
 type Cached<T> = { at: number; value: T };
@@ -90,6 +93,7 @@ export class QuoteService {
     const id = normalise(symbol);
     const cached = this.earningsCache.get(id);
     if (cached && this.now() - cached.at < EARNINGS_TTL_MS) return cached.value;
+    if (!US_TICKER.test(id)) return undefined;
     const key = await this.getKey();
     if (!key) return undefined;
     const value = await this.providers.finnhubEarnings(id, key, exchangeDate(this.now())).catch(() => undefined);
@@ -136,7 +140,9 @@ export class QuoteService {
   }
 
   private async fetchSnapshot(symbol: string): Promise<Snapshot> {
-    const key = await this.getKey();
+    // Finnhub's free plan prices plain US tickers only, so it is not asked about an index, a
+    // Toronto or London listing, or a coin — Yahoo answers those either way.
+    const key = US_TICKER.test(symbol) ? await this.getKey() : null;
     const [chart, fh] = await Promise.allSettled([
       this.providers.yahooChart(symbol),
       key ? this.providers.finnhubQuote(symbol, key) : Promise.reject(new ProviderError("unauthorized", "no key")),

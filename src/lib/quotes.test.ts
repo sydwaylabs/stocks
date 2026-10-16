@@ -58,6 +58,19 @@ describe("QuoteService.snapshot", () => {
     }
   });
 
+  it("does not ask Finnhub about indices, foreign listings or coins", async () => {
+    const providers = stubs();
+    const service = new QuoteService(() => "k", { providers });
+    for (const symbol of ["^GSPTSE", "RY.TO", "VOD.L", "BTC-USD"]) {
+      const snap = await service.snapshot(symbol);
+      expect(snap.quote.source).toBe("yahoo");
+      expect(snap.keyRejected).toBeUndefined();
+      expect(await service.earnings(symbol)).toBeUndefined();
+    }
+    expect(providers.finnhubQuote).not.toHaveBeenCalled();
+    expect(providers.finnhubEarnings).not.toHaveBeenCalled();
+  });
+
   it("flags a rejected key while still answering from Yahoo", async () => {
     const snap = await new QuoteService(() => "bad", { providers: stubs({ finnhubQuote: fail("unauthorized") }) }).snapshot("AAPL");
     expect(snap.quote.source).toBe("yahoo");

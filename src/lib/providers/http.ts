@@ -32,7 +32,14 @@ export async function getJson(
   } catch (error) {
     throw new ProviderError("unavailable", `request failed: ${error instanceof Error ? error.message : String(error)}`);
   }
-  if (res.status === 401) throw new ProviderError("unauthorized", "HTTP 401");
+  if (res.status === 401) {
+    // Finnhub answers 401 both to a bad key and to a good key asking for something its plan does
+    // not cover (an index, a Toronto listing). Only the first says "Invalid API key" — measured
+    // 2026-10-16 — and only that one is the user's to fix.
+    const text = await res.text().catch(() => "");
+    const badKey = text === "" || /invalid api key/i.test(text);
+    throw new ProviderError(badKey ? "unauthorized" : "no-access", `HTTP 401${badKey ? "" : ", not on this plan"}`);
+  }
   if (res.status === 403) throw new ProviderError("no-access", "HTTP 403");
   if (res.status === 429) throw new ProviderError("rate-limited", "HTTP 429");
   const text = await res.text();
