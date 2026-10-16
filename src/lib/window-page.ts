@@ -90,8 +90,9 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .seg button:hover { color: var(--fg); }
 .seg button.on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
 .chart-caption { color: var(--fg-dim); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
-/* Price scale on the left, hard against the plot; the time axis sits under the plot only. */
-.chart-grid { display: grid; grid-template-columns: auto 1fr; column-gap: 5px; }
+/* Price scale on the right, as price charts have it, hard against the plot; the time axis sits
+   under the plot only. */
+.chart-grid { display: grid; grid-template-columns: 1fr auto; column-gap: 6px; }
 .chart { position: relative; background: var(--card); border: 1px solid var(--card-line); border-radius: 8px; height: 150px; overflow: hidden; cursor: crosshair; }
 /* Hover: a rule at the nearest bar, a dot on the line, and a readout that stays inside the plot. */
 .xhair { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--fg-faint); pointer-events: none; }
@@ -100,7 +101,7 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .readout-price { font-weight: 650; font-size: 13px; }
 .readout-meta { color: var(--fg-dim); font-size: 11px; }
 .yaxis { position: relative; min-width: 24px; margin: 1px 0; }
-.ytick { position: absolute; right: 0; transform: translateY(-50%); color: var(--fg-faint); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ytick { position: absolute; left: 0; transform: translateY(-50%); color: var(--fg-faint); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .chart svg { display: block; width: 100%; height: 100%; }
 .axis { position: relative; height: 16px; margin: 4px 1px 0; }
 .tick { position: absolute; top: 0; transform: translateX(-50%); color: var(--fg-faint); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -158,9 +159,8 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
     <span class="chart-caption" id="chart-caption"></span>
   </div>
   <div class="chart-grid">
-    <div class="yaxis" id="d-yaxis"></div>
     <div class="chart" id="d-chart"></div>
-    <div></div>
+    <div class="yaxis" id="d-yaxis"></div>
     <div class="axis" id="d-axis"></div>
   </div>
   <dl class="stats" id="d-rows"></dl>
