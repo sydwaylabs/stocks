@@ -19,7 +19,7 @@ export type WindowInit = {
 };
 
 export const WINDOW_WIDTH = 640;
-export const WINDOW_HEIGHT = 565;
+export const WINDOW_HEIGHT = 580;
 
 /** JSON that is safe inside a script block: `</script>` in data cannot end it. */
 export function scriptJson(value: unknown): string {
@@ -61,7 +61,10 @@ html.ready body { visibility: visible; }
 .bar-divider { width: 1px; height: 16px; flex: 0 0 auto; margin: 0 3px; background: var(--card-line); }
 .chip { font-size: 11px; color: var(--fg-dim); background: var(--kbd); padding: 2px 7px; border-radius: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spacer { flex: 1; }
-main { flex: 1; overflow: auto; padding: 14px; }
+/* The window is fitted to the detail view, so nothing should need to scroll; if a short screen
+   clamps it, content still scrolls, just without a bar. */
+main { flex: 1; overflow: auto; padding: 14px; scrollbar-width: none; }
+main::-webkit-scrollbar { display: none; }
 footer { padding: 8px 14px; border-top: 1px solid var(--line); color: var(--fg-faint); font-size: 11px; display: flex; gap: 12px; }
 kbd { background: var(--kbd); border-radius: 4px; padding: 0 5px; font: inherit; color: var(--fg-dim); }
 button { font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--card-line); border-radius: 6px; padding: 4px 10px; cursor: default; }
@@ -110,7 +113,7 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 </style>
 </head>
 <body>
-<div class="bar">
+<div class="bar" id="bar">
   <span class="brand">Stocks</span>
   <span class="bar-divider"></span>
   <span class="chip" id="chip"></span>
@@ -168,6 +171,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   var poll = 0;
   var lastPing = 0;
   var website = "";
+  var fitTimer = 0;
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -197,6 +201,30 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     });
   }
 
+  /*
+   * Fits the window to what it shows (references/page-conventions.md, "Fitting the window"). The
+   * detail view is sized to its content, which varies with what the source gave. Search keeps the
+   * full height, so the window does not jump about as results arrive. A zero timeout, not
+   * requestAnimationFrame: a window not on screen yet gets no frames.
+   */
+  function fit() {
+    clearTimeout(fitTimer);
+    fitTimer = setTimeout(function () {
+      var height = ${WINDOW_HEIGHT};
+      if (mode === "detail") {
+        var view = $("detail").hidden ? $("d-error") : $("detail");
+        view.style.flex = "none";
+        height = $("bar").offsetHeight + view.scrollHeight + $("footer").offsetHeight;
+        view.style.flex = "";
+      }
+      if (window.__nativeHost) {
+        try { window.webkit.messageHandlers.resize.postMessage({ height: height }); } catch (e) { /* older host */ }
+      } else {
+        try { window.resizeTo(outerWidth, height + (outerHeight - innerHeight)); } catch (e) { /* not allowed */ }
+      }
+    }, 0);
+  }
+
   function show(next) {
     mode = next;
     $("detail").hidden = true;
@@ -212,6 +240,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       q.focus();
       q.select();
       renderResults();
+      fit();
     } else {
       $("chip").textContent = symbol;
       setFooter([["r", "refresh"], ["s", "change symbol"], ["esc", "close"]]);
@@ -235,6 +264,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     var box = $("d-error");
     box.hidden = false;
     box.textContent = message;
+    fit();
   }
 
   function renderDetail(d) {
@@ -262,7 +292,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     var logo = $("d-logo");
     if (d.logo && logo.getAttribute("src") !== d.logo) logo.setAttribute("src", d.logo);
     logo.hidden = !d.logo;
-    logo.onerror = function () { logo.hidden = true; };
+    logo.onerror = function () { logo.hidden = true; fit(); };
+    logo.onload = fit;
     website = d.website || "";
     $("d-company").textContent = d.company ? "· " + d.company : "";
     $("d-web").hidden = !website;
@@ -276,6 +307,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (when) meta += " · last trade " + when.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
     meta += " · updated " + new Date(d.fetchedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     $("d-meta").textContent = meta;
+    fit();
   }
 
   var NS = "http://www.w3.org/2000/svg";
