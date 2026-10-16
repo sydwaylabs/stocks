@@ -44,10 +44,9 @@ describe("detail data", () => {
   it("formats every field the window shows", () => {
     const d = buildDetail(snap);
     expect(d).toMatchObject({ symbol: "AAPL", price: "343.46", change: "+1.46", changePct: "+0.43%", trend: "up", source: "Yahoo Finance" });
-    expect(d.ranges.map((r) => r.label)).toEqual(["Day range", "52-week range"]);
-    expect(d.ranges[0].at).toBeGreaterThan(0);
-    expect(d.ranges[0].at).toBeLessThan(1);
     expect(d.rows).toEqual([
+      { label: "Day range", value: "340.46 – 347.82" },
+      { label: "52-week range", value: "243.42 – 348.15" },
       { label: "Previous close", value: "342.00" },
       { label: "Market cap", value: "5.01T" },
       { label: "Volume", value: "59.8M" },
@@ -58,7 +57,6 @@ describe("detail data", () => {
 
   it("leaves out what the source did not give", () => {
     const d = buildDetail({ quote: { symbol: "X", price: 1, source: "finnhub" }, details: {}, fetchedAt: 0 });
-    expect(d.ranges).toEqual([]);
     expect(d.rows).toEqual([]);
     expect(d.points).toEqual([]);
     expect(d.trend).toBe("flat");
@@ -70,7 +68,7 @@ describe("detail data", () => {
       details: { ...snap.details, pe: 31.24, eps: 6.1, dividendYield: 0.4412, beta: 1.2, earnings: { date: "2026-10-29", hour: "amc" }, industry: "Technology", country: "US", website: "https://www.apple.com/" },
     });
     expect(d.rows.map((r) => r.label)).toEqual([
-      "Previous close", "Market cap", "Volume", "P/E (TTM)", "EPS (TTM)", "Dividend yield", "Beta", "Next earnings", "Type",
+      "Day range", "52-week range", "Previous close", "Market cap", "Volume", "P/E (TTM)", "EPS (TTM)", "Dividend yield", "Beta", "Next earnings", "Type",
     ]);
     expect(d.rows.find((r) => r.label === "Dividend yield")?.value).toBe("0.44%");
     expect(d.company).toBe("Technology · US");

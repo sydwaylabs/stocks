@@ -18,8 +18,6 @@ export type DetailData = {
   trend: Trend;
   points: number[];
   prevClose?: number;
-  /** Where the current price sits in a low–high range, 0–1, with both ends formatted. */
-  ranges: { label: string; low: string; high: string; at: number }[];
   rows: { label: string; value: string }[];
   /** Company facts from a Finnhub key: industry and country, already joined. */
   company?: string;
@@ -36,16 +34,13 @@ const SOURCE_NAMES = { yahoo: "Yahoo Finance", finnhub: "Finnhub", nasdaq: "Nasd
 
 export function buildDetail(snap: Snapshot): DetailData {
   const { quote, details } = snap;
-  const ranges: DetailData["ranges"] = [];
+  const rows: DetailData["rows"] = [];
   const range = (label: string, low?: number, high?: number) => {
     if (low === undefined || high === undefined || high < low) return;
-    const at = high === low ? 0.5 : Math.min(1, Math.max(0, (quote.price - low) / (high - low)));
-    ranges.push({ label, low: formatPriceLong(low), high: formatPriceLong(high), at });
+    rows.push({ label, value: `${formatPriceLong(low)} – ${formatPriceLong(high)}` });
   };
   range("Day range", quote.dayLow, quote.dayHigh);
   range("52-week range", details.wk52Low, details.wk52High);
-
-  const rows: DetailData["rows"] = [];
   if (quote.prevClose !== undefined) rows.push({ label: "Previous close", value: formatPriceLong(quote.prevClose) });
   if (details.marketCap !== undefined) rows.push({ label: "Market cap", value: compact(details.marketCap) });
   if (details.volume !== undefined) rows.push({ label: "Volume", value: compact(details.volume) });
@@ -68,7 +63,6 @@ export function buildDetail(snap: Snapshot): DetailData {
     trend: trendOf(quote.change ?? quote.changePct),
     points: snap.series?.points ?? [],
     prevClose: quote.prevClose,
-    ranges,
     rows,
     company: [details.industry, details.country].filter(Boolean).join(" · ") || undefined,
     logo: details.logo,

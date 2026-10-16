@@ -19,7 +19,7 @@ export type WindowInit = {
 };
 
 export const WINDOW_WIDTH = 640;
-export const WINDOW_HEIGHT = 570;
+export const WINDOW_HEIGHT = 565;
 
 /** JSON that is safe inside a script block: `</script>` in data cannot end it. */
 export function scriptJson(value: unknown): string {
@@ -84,14 +84,8 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .chart { margin: 12px 0 4px; background: var(--card); border: 1px solid var(--card-line); border-radius: 8px; height: 150px; }
 .chart svg { display: block; width: 100%; height: 100%; }
 .chart-empty { height: 100%; display: flex; align-items: center; justify-content: center; color: var(--fg-faint); }
-/* Two columns: the ranges side by side, then the stats in pairs. */
-.ranges { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; }
-.range { margin: 12px 0; min-width: 0; }
-.range-head { display: flex; justify-content: space-between; color: var(--fg-dim); font-size: 12px; margin-bottom: 5px; font-variant-numeric: tabular-nums; }
-.range-head span:first-child { color: var(--fg); }
-.track { position: relative; height: 4px; border-radius: 2px; background: var(--card-line); }
-.marker { position: absolute; top: -4px; width: 4px; height: 12px; margin-left: -2px; border-radius: 2px; background: var(--fg); }
-.stats { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; margin-top: 6px; }
+/* Stats in pairs, filled left to right. */
+.stats { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; margin-top: 12px; }
 .stat { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; line-height: 18px; min-width: 0; }
 .stat dt { color: var(--fg-dim); white-space: nowrap; }
 .stat dd { margin: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -135,7 +129,6 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
   <div class="price-row"><span class="price" id="d-price"></span><span class="ccy" id="d-ccy"></span></div>
   <div class="move" id="d-move"></div>
   <div class="chart" id="d-chart"></div>
-  <div class="ranges" id="d-ranges"></div>
   <dl class="stats" id="d-rows"></dl>
   <p class="note" id="d-note" hidden></p>
   <p class="meta" id="d-meta"></p>
@@ -257,20 +250,6 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     move.className = "move " + d.trend;
     move.textContent = [d.change, d.changePct ? "(" + d.changePct + ")" : ""].join(" ").trim() + " today";
     drawChart($("d-chart"), d.points, d.prevClose, d.trend);
-
-    var ranges = $("d-ranges");
-    ranges.replaceChildren();
-    d.ranges.forEach(function (r) {
-      var wrap = el("div", "range");
-      var head = el("div", "range-head");
-      head.append(el("span", "", r.label), el("span", "", r.low + " – " + r.high));
-      var track = el("div", "track");
-      var marker = el("div", "marker");
-      marker.style.left = (r.at * 100).toFixed(1) + "%";
-      track.append(marker);
-      wrap.append(head, track);
-      ranges.append(wrap);
-    });
 
     var rows = $("d-rows");
     rows.replaceChildren();
