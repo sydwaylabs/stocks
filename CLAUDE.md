@@ -38,6 +38,9 @@ window; an empty key opens search on any press.
 - **Chart**: `src/lib/chart-data.ts` lays it out (x positions, ticks as epoch ms); the page
   formats times in the Mac's zone. 1D is on the session clock from Yahoo's `tradingPeriods`;
   longer ranges are spaced by bar. `QuoteService.chart` caches longer ranges for 10 minutes.
+- **Palette departure**: the chart's range selector is a neutral grey pill, not the house
+  `--accent` green — in the detail view green means "price up", so a green selection reads as
+  data. Search keeps the house green, which has no price colours to collide with.
 - **Window**: one page, two views (`src/lib/window-page.ts`). `select` is accepted only for a
   symbol in the last search results (`SearchSession`).
 - **Refresh**: the shared ticker (`src/tick.ts`), one subscription per key; the quote cache

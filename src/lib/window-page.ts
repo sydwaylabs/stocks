@@ -88,7 +88,10 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .seg { display: inline-flex; background: var(--card); border: 1px solid var(--card-line); border-radius: 7px; padding: 2px; gap: 2px; }
 .seg button { border: none; background: none; padding: 2px 9px; border-radius: 5px; font-size: 12px; color: var(--fg-dim); }
 .seg button:hover { color: var(--fg); }
-.seg button.on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+/* Not the house green: on this screen green means "up", and a green 6M would read as a 6-month
+   gain. The selected range is a neutral pill instead (a deliberate departure, see CLAUDE.md). */
+.seg button.on { background: #5a5a5f; color: var(--fg); font-weight: 600; }
+.seg button:focus-visible { outline: 2px solid var(--fg-dim); outline-offset: 0; }
 .chart-caption { color: var(--fg-dim); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 /* One framed card: the plot, then the price scale in a strip down its right edge, inside the
    frame. The time axis sits under the card, as wide as the plot. */
