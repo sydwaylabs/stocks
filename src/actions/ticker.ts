@@ -14,7 +14,7 @@ import { keyHint } from "../lib/finnhub-key.js";
 import { renderKey, toDataUri, type KeyView } from "../lib/key-image.js";
 import * as finnhub from "../lib/providers/finnhub.js";
 import { ProviderError } from "../lib/providers/types.js";
-import { normalise, QuoteService, type Snapshot } from "../lib/quotes.js";
+import { daysUntil, exchangeDate, normalise, QuoteService, type Snapshot } from "../lib/quotes.js";
 import { EDITABLE, mergeWithDefaults, type TickerSettings } from "../lib/settings.js";
 import { openStockWindow } from "../stock-window.js";
 import { ticker } from "../tick.js";
@@ -31,6 +31,8 @@ import { ticker } from "../tick.js";
  */
 
 const LONG_PRESS_MS = 500;
+/** The key's "E" badge shows from this many days before an earnings report until the day itself. */
+const EARNINGS_BADGE_DAYS = 7;
 const FINNHUB_SIGNUP = "https://finnhub.io/register";
 
 const quotes = new QuoteService(finnhubKey);
@@ -43,6 +45,8 @@ type KeyInstance = {
   settings: Required<TickerSettings>;
   keyDownAt: number | null;
   last: Snapshot | null;
+  /** An earnings report is due within the badge window. Needs a Finnhub key. */
+  earningsSoon: boolean;
   closeWindow: (() => void) | null;
   /** Bumped whenever the symbol changes, so an answer for the old symbol is not drawn. */
   generation: number;
@@ -75,6 +79,7 @@ export class Ticker extends SingletonAction<TickerSettings> {
       settings,
       keyDownAt: null,
       last: existing && existing.settings.symbol === settings.symbol ? existing.last : null,
+      earningsSoon: existing && existing.settings.symbol === settings.symbol ? existing.earningsSoon : false,
       closeWindow: existing?.closeWindow ?? null,
       generation: existing?.generation ?? 0,
     };
@@ -106,6 +111,7 @@ export class Ticker extends SingletonAction<TickerSettings> {
         await ev.action.setSettings(next);
       }
       instance.last = null;
+      instance.earningsSoon = false;
       instance.generation++;
     }
     instance.settings = next;
@@ -181,6 +187,7 @@ export class Ticker extends SingletonAction<TickerSettings> {
       if (instance.generation !== generation) return false;
       instance.last = snap;
       await this.draw(instance);
+      await this.updateEarnings(instance, generation);
       return true;
     } catch (error) {
       if (instance.generation !== generation) return false;
@@ -198,6 +205,17 @@ export class Ticker extends SingletonAction<TickerSettings> {
       }
       return false;
     }
+  }
+
+  /** Redraws only when the badge changes; the earnings date is cached for hours. */
+  private async updateEarnings(instance: KeyInstance, generation: number): Promise<void> {
+    const earnings = await quotes.earnings(instance.settings.symbol);
+    if (instance.generation !== generation) return;
+    const days = earnings ? daysUntil(earnings.date, exchangeDate(Date.now())) : -1;
+    const soon = days >= 0 && days <= EARNINGS_BADGE_DAYS;
+    if (soon === instance.earningsSoon) return;
+    instance.earningsSoon = soon;
+    await this.draw(instance);
   }
 
   private async draw(instance: KeyInstance): Promise<void> {
@@ -221,6 +239,7 @@ export class Ticker extends SingletonAction<TickerSettings> {
       currency: last.quote.currency,
       display: settings.display,
       changeAs: settings.changeAs,
+      earningsSoon: instance.earningsSoon,
       // Twice the interval: one missed refresh is a blip, two means the numbers are old.
       stale: Date.now() - last.fetchedAt > 2 * intervalMs(settings),
     });
@@ -260,6 +279,7 @@ export class Ticker extends SingletonAction<TickerSettings> {
     if (!instance) return;
     instance.settings = { ...instance.settings, symbol: normalise(symbol), name };
     instance.last = null;
+    instance.earningsSoon = false;
     instance.generation++;
     await instance.action.setSettings(instance.settings);
     // setSettings() does not fire onDidReceiveSettings, so reschedule and redraw here.

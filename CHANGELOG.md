@@ -20,6 +20,9 @@ notes and the Marketplace "what's new" text are generated from this file.
   market cap and a **Change symbol** button.
 - Works with no account or API key. An optional free Finnhub key, shared by every Stocks key, adds
   an official quote source; it is checked before saving and stored encrypted.
+- With a Finnhub key, the detail window adds P/E, EPS, dividend yield, beta, the next earnings
+  date, industry, country, the company logo and a website link, and the key shows an amber **E**
+  in the week before an earnings report.
 
 ## [0.1.0] - 2026-10-16
 

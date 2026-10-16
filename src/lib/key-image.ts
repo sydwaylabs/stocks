@@ -24,6 +24,8 @@ export type KeyView =
       display: "price" | "change";
       /** Today's move as a percentage or as an amount in the quote's currency. */
       changeAs: "percent" | "amount";
+      /** An earnings report is due within the next week (needs a Finnhub key). */
+      earningsSoon?: boolean;
       stale: boolean;
     }
   | { kind: "error"; symbol: string; message: string; hint?: string };
@@ -86,6 +88,17 @@ export function sparkline(points: number[], prevClose: number | undefined, colou
   return `${rule}<polyline points="${coords}" fill="none" stroke="${colour}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
 }
 
+const EARNINGS = "#fab219";
+
+/**
+ * A small amber "E" in the top-right corner, clear of a five-letter symbol (whose ink ends near
+ * x=120 at 28px). Filled, not outlined, so it survives at 72px.
+ */
+function earningsBadge(colour: string): string {
+  return `<circle cx="134" cy="10" r="9" fill="${colour}"/>`
+    + `<text x="134" y="14.5" font-size="13" font-weight="800" fill="${BG}" text-anchor="middle" font-family="-apple-system, Helvetica, sans-serif">E</text>`;
+}
+
 export function renderKey(view: KeyView): string {
   const parts: string[] = [`<rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>`];
   const mid = SIZE / 2;
@@ -121,6 +134,7 @@ export function renderKey(view: KeyView): string {
       const colour = fade(COLOURS[trend]);
       const sym = symbolFont(view.symbol);
       parts.push(text(mid, 34, sym.size, fade(FG), sym.text));
+      if (view.earningsSoon) parts.push(earningsBadge(fade(EARNINGS)));
 
       const move = view.changeAs === "amount" ? formatChangeShort(view.change, view.currency) : formatPct(view.changePct);
       if (view.display === "change" && move) {

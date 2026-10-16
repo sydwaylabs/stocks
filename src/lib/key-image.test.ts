@@ -72,6 +72,12 @@ describe("key image", () => {
     expect(renderKey({ ...quote, display: "change", changeAs: "amount" })).toContain("+$1.46");
   });
 
+  it("draws the earnings badge only when one is due", () => {
+    expect(renderKey(quote)).not.toContain(">E</text>");
+    expect(renderKey({ ...quote, earningsSoon: true })).toContain(">E</text>");
+    expect(renderKey({ ...quote, earningsSoon: true })).toContain("#fab219");
+  });
+
   it("colours by trend and dims when stale", () => {
     expect(renderKey(quote)).toContain("#29bd50");
     expect(renderKey({ ...quote, change: -1, changePct: -0.3 })).toContain("#ef4b4b");

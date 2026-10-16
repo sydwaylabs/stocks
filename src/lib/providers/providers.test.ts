@@ -100,14 +100,42 @@ describe("finnhub", () => {
     expect(kindOf(() => finnhub.parseQuote(zeros, "ZZZ"))).toBe("not-found");
   });
 
-  it("scales market cap from millions", () => {
-    expect(finnhub.parseProfile({ name: "Apple Inc", exchange: "NASDAQ NMS", marketCapitalization: 3_900_000.5 }))
-      .toEqual({ name: "Apple Inc", exchange: "NASDAQ NMS", marketCap: 3_900_000_500_000 });
+  it("parses a profile, scaling market cap from millions", () => {
+    const profile = finnhub.parseProfile({
+      name: "Apple Inc", exchange: "NASDAQ NMS", marketCapitalization: 3_900_000.5, finnhubIndustry: "Technology",
+      country: "US", logo: "https://static2.finnhub.io/file/publicdatany/finnhubimage/stock_logo/AAPL.png", weburl: "https://www.apple.com/",
+    });
+    expect(profile).toMatchObject({ name: "Apple Inc", marketCap: 3_900_000_500_000, industry: "Technology", country: "US", website: "https://www.apple.com/" });
+    expect(profile.logo).toMatch(/^https:/);
     expect(finnhub.parseProfile({}).marketCap).toBeUndefined();
   });
 
-  it("reads the 52-week range", () => {
-    expect(finnhub.parseMetric({ metric: { "52WeekHigh": 280, "52WeekLow": 170 } })).toEqual({ wk52High: 280, wk52Low: 170 });
+  it("keeps only web URLs from a profile", () => {
+    const p = finnhub.parseProfile({ logo: "javascript:alert(1)", weburl: "file:///etc/passwd" });
+    expect(p.logo).toBeUndefined();
+    expect(p.website).toBeUndefined();
+  });
+
+  it("reads ratios, taking the first name present", () => {
+    expect(finnhub.parseMetric({ metric: { "52WeekHigh": 280, "52WeekLow": 170, peTTM: 31.2, epsTTM: 6.1, dividendYieldIndicatedAnnual: 0.44, beta: 1.2 } }))
+      .toEqual({ wk52High: 280, wk52Low: 170, pe: 31.2, eps: 6.1, dividendYield: 0.44, beta: 1.2 });
+    expect(finnhub.parseMetric({ metric: { peBasicExclExtraTTM: 20, epsBasicExclExtraItemsTTM: 2, currentDividendYieldTTM: 1.5 } }))
+      .toMatchObject({ pe: 20, eps: 2, dividendYield: 1.5 });
+    expect(finnhub.parseMetric({ metric: { peTTM: null } }).pe).toBeUndefined();
+    expect(finnhub.parseMetric({})).toEqual({});
+  });
+
+  it("finds the next earnings report on or after today", () => {
+    const body = { earningsCalendar: [
+      { date: "2027-01-28", hour: "amc", symbol: "AAPL" },
+      { date: "2026-10-29", hour: "amc", symbol: "AAPL" },
+      { date: "2026-07-30", hour: "amc", symbol: "AAPL" },
+    ] };
+    expect(finnhub.parseEarnings(body, "2026-10-20")).toEqual({ date: "2026-10-29", hour: "amc" });
+    expect(finnhub.parseEarnings(body, "2026-10-29")).toEqual({ date: "2026-10-29", hour: "amc" });
+    expect(finnhub.parseEarnings({ earningsCalendar: [{ date: "2026-11-01", hour: "" }] }, "2026-10-20")).toEqual({ date: "2026-11-01" });
+    expect(finnhub.parseEarnings({ earningsCalendar: [] }, "2026-10-20")).toBeUndefined();
+    expect(finnhub.parseEarnings({}, "2026-10-20")).toBeUndefined();
   });
 
   it("parses search", () => {

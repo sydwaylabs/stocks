@@ -1,7 +1,7 @@
 import * as finnhub from "./providers/finnhub.js";
 import * as nasdaq from "./providers/nasdaq.js";
 import * as yahoo from "./providers/yahoo.js";
-import { ProviderError, type Details, type Quote, type SearchResult, type Series } from "./providers/types.js";
+import { ProviderError, type Details, type Earnings, type Quote, type SearchResult, type Series } from "./providers/types.js";
 
 /**
  * Decides which source answers, and makes sure several keys on one symbol cost one request.
@@ -28,8 +28,9 @@ export type Providers = {
   yahooChart: (symbol: string) => Promise<yahoo.ChartResult>;
   yahooSearch: (query: string) => Promise<SearchResult[]>;
   finnhubQuote: (symbol: string, key: string) => Promise<Quote>;
-  finnhubProfile: (symbol: string, key: string) => Promise<{ name?: string; exchange?: string; marketCap?: number }>;
-  finnhubMetric: (symbol: string, key: string) => Promise<Pick<Details, "wk52High" | "wk52Low">>;
+  finnhubProfile: (symbol: string, key: string) => Promise<finnhub.Profile>;
+  finnhubMetric: (symbol: string, key: string) => Promise<finnhub.Metric>;
+  finnhubEarnings: (symbol: string, key: string, today: string) => Promise<Earnings | undefined>;
   finnhubSearch: (query: string, key: string) => Promise<SearchResult[]>;
   nasdaqMarketCap: (symbol: string) => Promise<number | undefined>;
 };
@@ -40,14 +41,17 @@ export const liveProviders: Providers = {
   finnhubQuote: (s, k) => finnhub.fetchQuote(s, k),
   finnhubProfile: (s, k) => finnhub.fetchProfile(s, k),
   finnhubMetric: (s, k) => finnhub.fetchMetric(s, k),
+  finnhubEarnings: (s, k, t) => finnhub.fetchEarnings(s, k, t),
   finnhubSearch: (q, k) => finnhub.search(q, k),
   nasdaqMarketCap: (s) => nasdaq.fetchMarketCap(s),
 };
 
 /** A quote this fresh is served from the cache, so keys that tick together share one request. */
 const QUOTE_TTL_MS = 20_000;
-/** Market cap and the 52-week range barely move within a session. */
+/** Market cap, ratios and the earnings date barely move within a session. */
 const FUNDAMENTALS_TTL_MS = 60 * 60_000;
+/** The earnings date for the key's badge; asked for once every few hours per symbol. */
+const EARNINGS_TTL_MS = 6 * 60 * 60_000;
 
 /** Nasdaq only knows plain US tickers — no exchange suffix, index caret, pair or future. */
 const US_TICKER = /^[A-Z]{1,5}$/;
@@ -60,6 +64,7 @@ export class QuoteService {
   private readonly quotes = new Map<string, Cached<Snapshot>>();
   private readonly inflight = new Map<string, Promise<Snapshot>>();
   private readonly fundamentals = new Map<string, Cached<Details>>();
+  private readonly earningsCache = new Map<string, Cached<Earnings | undefined>>();
 
   constructor(
     private readonly getKey: () => string | null | Promise<string | null>,
@@ -73,6 +78,23 @@ export class QuoteService {
   invalidate(): void {
     this.quotes.clear();
     this.fundamentals.clear();
+    this.earningsCache.clear();
+  }
+
+  /**
+   * The next earnings report, for the key's badge. Needs a Finnhub key; without one, or for a
+   * symbol Finnhub has no calendar for, it is undefined. Never throws: a badge is not worth an
+   * alert.
+   */
+  async earnings(symbol: string): Promise<Earnings | undefined> {
+    const id = normalise(symbol);
+    const cached = this.earningsCache.get(id);
+    if (cached && this.now() - cached.at < EARNINGS_TTL_MS) return cached.value;
+    const key = await this.getKey();
+    if (!key) return undefined;
+    const value = await this.providers.finnhubEarnings(id, key, exchangeDate(this.now())).catch(() => undefined);
+    this.earningsCache.set(id, { at: this.now(), value });
+    return value;
   }
 
   /**
@@ -149,12 +171,17 @@ export class QuoteService {
     const key = await this.getKey();
     let value: Details = {};
     if (key && snap.quote.source === "finnhub") {
-      const [profile, metric] = await Promise.allSettled([
+      const [profile, metric, earnings] = await Promise.allSettled([
         this.providers.finnhubProfile(symbol, key),
         this.providers.finnhubMetric(symbol, key),
+        this.earnings(symbol),
       ]);
-      if (profile.status === "fulfilled") value.marketCap = profile.value.marketCap;
-      if (metric.status === "fulfilled") value = { ...definedOnly(metric.value), ...value };
+      if (profile.status === "fulfilled") {
+        const { name: _name, exchange: _exchange, ...rest } = profile.value;
+        value = { ...value, ...definedOnly(rest) };
+      }
+      if (metric.status === "fulfilled") value = { ...value, ...definedOnly(metric.value) };
+      if (earnings.status === "fulfilled" && earnings.value) value.earnings = earnings.value;
     }
     if (value.marketCap === undefined && isUsEquity(symbol, snap)) {
       value.marketCap = await this.providers.nasdaqMarketCap(symbol).catch(() => undefined);
@@ -162,6 +189,19 @@ export class QuoteService {
     this.fundamentals.set(symbol, { at: this.now(), value });
     return value;
   }
+}
+
+/**
+ * Today's date on Wall Street, YYYY-MM-DD — the calendar Finnhub's earnings dates are written in.
+ * A date, not a time of day, so Node's bundled zone data is close enough here.
+ */
+export function exchangeDate(now: number): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
+/** Whole days from `today` to `date`, both YYYY-MM-DD. */
+export function daysUntil(date: string, today: string): number {
+  return Math.round((Date.parse(`${date}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000);
 }
 
 export function normalise(symbol: string): string {

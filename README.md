@@ -30,7 +30,11 @@ every Sydway Labs key. A key whose numbers are more than two refreshes old is dr
   settings and shared by all of them. With a key, prices come from Finnhub's official API wherever
   it covers the symbol (mostly US listings on the free plan), market cap and the 52-week range come
   from Finnhub, and Yahoo fills in everything else — the sparkline, and any symbol Finnhub does not
-  price. If Yahoo ever stops answering, a key keeps US quotes working.
+  price. If Yahoo ever stops answering, a key keeps US quotes working. A key also adds:
+  - **in the detail window**: P/E, EPS, dividend yield, beta, the next earnings date, the
+    company's industry and country, its logo and a link to its website;
+  - **on the key**: an amber **E** in the corner from a week before an earnings report until the
+    day itself.
 - **Market cap without a key** comes from Nasdaq's quote summary, for US-listed stocks only.
 
 The key is checked with Finnhub before it is saved, then stored in the plugin's global settings

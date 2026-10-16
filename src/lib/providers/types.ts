@@ -27,7 +27,21 @@ export type Details = {
   wk52Low?: number;
   volume?: number;
   marketCap?: number;
+  // With a Finnhub key only:
+  pe?: number;
+  eps?: number;
+  /** Percent, e.g. 0.44 for 0.44%. */
+  dividendYield?: number;
+  beta?: number;
+  industry?: string;
+  country?: string;
+  logo?: string;
+  website?: string;
+  earnings?: Earnings;
 };
+
+/** The next scheduled earnings report. `date` is the exchange's calendar date, YYYY-MM-DD. */
+export type Earnings = { date: string; hour?: "bmo" | "amc" | "dmh" };
 
 /** Intraday closes, oldest first. Gaps Yahoo leaves as null are dropped. */
 export type Series = { points: number[] };

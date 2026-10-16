@@ -19,7 +19,7 @@ export type WindowInit = {
 };
 
 export const WINDOW_WIDTH = 440;
-export const WINDOW_HEIGHT = 560;
+export const WINDOW_HEIGHT = 660;
 
 /** JSON that is safe inside a script block: `</script>` in data cannot end it. */
 export function scriptJson(value: unknown): string {
@@ -69,7 +69,12 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 [hidden] { display: none !important; }
 
 /* detail */
-.name { color: var(--fg-dim); margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name-row { display: flex; align-items: center; gap: 8px; margin: 0 0 2px; min-width: 0; }
+.logo { width: 20px; height: 20px; border-radius: 4px; background: #fff; object-fit: contain; flex: 0 0 auto; }
+.name { color: var(--fg-dim); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.company { color: var(--fg-faint); font-size: 12px; margin: 10px 0 0; display: flex; gap: 10px; align-items: center; }
+.link { background: none; border: none; padding: 0; color: var(--series); font-size: 12px; }
+.link:hover { text-decoration: underline; }
 .price-row { display: flex; align-items: baseline; gap: 10px; }
 .price { font-size: 32px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .ccy { color: var(--fg-dim); font-size: 13px; }
@@ -117,12 +122,13 @@ td:first-child { color: var(--fg-dim); }
 </div>
 
 <main id="detail" hidden>
-  <p class="name" id="d-name"></p>
+  <div class="name-row"><img class="logo" id="d-logo" alt="" hidden><p class="name" id="d-name"></p></div>
   <div class="price-row"><span class="price" id="d-price"></span><span class="ccy" id="d-ccy"></span></div>
   <div class="move" id="d-move"></div>
   <div class="chart" id="d-chart"></div>
   <div id="d-ranges"></div>
   <table><tbody id="d-rows"></tbody></table>
+  <p class="company" id="d-company-row" hidden><span id="d-company"></span><button class="link" id="d-web" hidden>Website</button></p>
   <p class="note" id="d-note" hidden></p>
   <p class="meta" id="d-meta"></p>
 </main>
@@ -160,6 +166,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   var debounce = 0;
   var poll = 0;
   var lastPing = 0;
+  var website = "";
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -265,6 +272,15 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       rows.append(tr);
     });
 
+    var logo = $("d-logo");
+    if (d.logo && logo.getAttribute("src") !== d.logo) logo.setAttribute("src", d.logo);
+    logo.hidden = !d.logo;
+    logo.onerror = function () { logo.hidden = true; };
+    website = d.website || "";
+    $("d-company").textContent = d.company || "";
+    $("d-web").hidden = !website;
+    $("d-company-row").hidden = !d.company && !website;
+
     var note = $("d-note");
     note.hidden = !d.note;
     note.textContent = d.note || "";
@@ -363,6 +379,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   });
 
   $("change").addEventListener("click", function () { show("search"); });
+  /* The plugin opens it only if it is the website it just sent for this symbol. */
+  $("d-web").addEventListener("click", function () { if (website) post("openLink", { url: website }); });
 
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") {

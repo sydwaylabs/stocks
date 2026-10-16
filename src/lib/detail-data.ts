@@ -1,6 +1,6 @@
 import { compact, formatChange, formatPct, formatPriceLong, trendOf, type Trend } from "./format.js";
 import type { Snapshot } from "./quotes.js";
-import type { SearchResult } from "./providers/types.js";
+import type { Earnings, SearchResult } from "./providers/types.js";
 
 /**
  * What the window shows, already formatted, so the page only lays it out. Formatting stays in
@@ -21,6 +21,10 @@ export type DetailData = {
   /** Where the current price sits in a low–high range, 0–1, with both ends formatted. */
   ranges: { label: string; low: string; high: string; at: number }[];
   rows: { label: string; value: string }[];
+  /** Company facts from a Finnhub key: industry and country, already joined. */
+  company?: string;
+  logo?: string;
+  website?: string;
   source: string;
   /** Epoch ms; the page formats it, since WebKit uses the Mac's own zone data. */
   marketTime?: number;
@@ -45,6 +49,12 @@ export function buildDetail(snap: Snapshot): DetailData {
   if (quote.prevClose !== undefined) rows.push({ label: "Previous close", value: formatPriceLong(quote.prevClose) });
   if (details.marketCap !== undefined) rows.push({ label: "Market cap", value: compact(details.marketCap) });
   if (details.volume !== undefined) rows.push({ label: "Volume", value: compact(details.volume) });
+  // The rest only arrive with a Finnhub key.
+  if (details.pe !== undefined) rows.push({ label: "P/E (TTM)", value: details.pe.toFixed(1) });
+  if (details.eps !== undefined) rows.push({ label: "EPS (TTM)", value: details.eps.toFixed(2) });
+  if (details.dividendYield !== undefined) rows.push({ label: "Dividend yield", value: `${details.dividendYield.toFixed(2)}%` });
+  if (details.beta !== undefined) rows.push({ label: "Beta", value: details.beta.toFixed(2) });
+  if (details.earnings) rows.push({ label: "Next earnings", value: formatEarnings(details.earnings) });
   if (details.instrumentType) rows.push({ label: "Type", value: typeLabel(details.instrumentType) });
 
   return {
@@ -60,11 +70,24 @@ export function buildDetail(snap: Snapshot): DetailData {
     prevClose: quote.prevClose,
     ranges,
     rows,
+    company: [details.industry, details.country].filter(Boolean).join(" · ") || undefined,
+    logo: details.logo,
+    website: details.website,
     source: SOURCE_NAMES[quote.source],
     marketTime: quote.marketTime,
     fetchedAt: snap.fetchedAt,
     note: snap.keyRejected ? "Finnhub refused the saved key, so this is from Yahoo." : undefined,
   };
+}
+
+const HOURS = { bmo: "before open", amc: "after close", dmh: "during market hours" } as const;
+
+/** "Thu Oct 30, after close". The date is a calendar date, so it is formatted in UTC as written. */
+export function formatEarnings(earnings: Earnings): string {
+  const day = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" })
+    .format(Date.parse(`${earnings.date}T12:00:00Z`))
+    .replace(",", "");
+  return earnings.hour ? `${day}, ${HOURS[earnings.hour]}` : day;
 }
 
 const TYPE_LABELS: Record<string, string> = {

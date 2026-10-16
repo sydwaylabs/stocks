@@ -39,5 +39,10 @@ window; an empty key opens search on any press.
   symbol in the last search results (`SearchSession`).
 - **Refresh**: the shared ticker (`src/tick.ts`), one subscription per key; the quote cache
   (20 s) makes keys on the same symbol share one request.
-- The Finnhub fixtures in `providers.test.ts` are written from the API docs, not captured —
-  capture real ones when a key is to hand.
+- **Finnhub extras** (key only): `/stock/metric` ratios, `/stock/profile2` company facts and
+  `/calendar/earnings`, all in `QuoteService.detailed`; the key's earnings badge uses
+  `QuoteService.earnings`, cached 6 h. Company websites reach `serveWindow`'s `links` as the
+  window shows them, so `openLink` opens only a site the page was just given.
+- The Finnhub tests in `providers.test.ts` use shapes from the API docs. `FINNHUB_KEY=…
+  node scripts/capture-finnhub.mjs` captures real ones into `fixtures/` and reports which metric
+  names are present.

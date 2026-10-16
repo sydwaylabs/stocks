@@ -26,6 +26,8 @@ export type StockWindowOptions = {
 
 export async function openStockWindow(options: StockWindowOptions): Promise<void> {
   const session = new SearchSession();
+  // Grows as the window shows company websites; serveWindow opens only exact entries.
+  const links: string[] = [];
   const initialSymbol = options.symbol();
   const mode = initialSymbol ? "detail" : "search";
   const windowTitle = initialSymbol ? `Stocks — ${initialSymbol.slice(0, 16)}` : "Stocks — choose a symbol";
@@ -36,7 +38,9 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         const symbol = options.symbol();
         if (!symbol) return { message: "No symbol is set on this key." };
         try {
-          return { detail: buildDetail(await options.quotes.detailed(symbol)) };
+          const detail = buildDetail(await options.quotes.detailed(symbol));
+          if (detail.website && !links.includes(detail.website)) links.push(detail.website);
+          return { detail };
         } catch (error) {
           return { message: describe(error, symbol) };
         }
@@ -74,6 +78,7 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         width: WINDOW_WIDTH,
         height: WINDOW_HEIGHT,
         title: windowTitle,
+        links,
       });
       return;
     } catch (error) {

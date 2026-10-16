@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ProviderError, type Quote } from "./providers/types.js";
 import type { ChartResult } from "./providers/yahoo.js";
-import { QuoteService, type Providers } from "./quotes.js";
+import { daysUntil, exchangeDate, QuoteService, type Providers } from "./quotes.js";
 
 function chart(symbol: string, overrides: Partial<Quote> = {}): ChartResult {
   return {
@@ -24,8 +24,9 @@ function stubs(overrides: Partial<Providers> = {}): Providers {
     yahooChart: vi.fn(async (s: string) => chart(s)),
     yahooSearch: vi.fn(async () => [{ symbol: "AAPL", name: "Apple", type: "EQUITY" }]),
     finnhubQuote: vi.fn(async (s: string) => finnhubQuote(s)),
-    finnhubProfile: vi.fn(async () => ({ marketCap: 3e12 })),
-    finnhubMetric: vi.fn(async () => ({ wk52High: 130, wk52Low: 70 })),
+    finnhubProfile: vi.fn(async () => ({ name: "Apple Inc", exchange: "NASDAQ", marketCap: 3e12, industry: "Technology", country: "US", website: "https://www.apple.com/" })),
+    finnhubMetric: vi.fn(async () => ({ wk52High: 130, wk52Low: 70, pe: 31.2, eps: 6.1, dividendYield: 0.44, beta: 1.2 })),
+    finnhubEarnings: vi.fn(async () => ({ date: "2026-10-29", hour: "amc" as const })),
     finnhubSearch: vi.fn(async () => [{ symbol: "AAPL", name: "APPLE INC", type: "Common Stock" }]),
     nasdaqMarketCap: vi.fn(async () => 2e12),
     ...overrides,
@@ -104,9 +105,24 @@ describe("QuoteService.snapshot", () => {
 });
 
 describe("QuoteService.detailed", () => {
-  it("takes market cap and the 52-week range from Finnhub with a key", async () => {
+  it("takes market cap, ratios, company facts and earnings from Finnhub with a key", async () => {
     const snap = await new QuoteService(() => "k", { providers: stubs() }).detailed("AAPL");
-    expect(snap.details).toMatchObject({ marketCap: 3e12, wk52High: 130, wk52Low: 70 });
+    expect(snap.details).toMatchObject({
+      marketCap: 3e12, wk52High: 130, wk52Low: 70, pe: 31.2, eps: 6.1, dividendYield: 0.44, beta: 1.2,
+      industry: "Technology", country: "US", website: "https://www.apple.com/",
+      earnings: { date: "2026-10-29", hour: "amc" },
+    });
+    // Yahoo's exchange name stays; Finnhub's profile does not overwrite it.
+    expect(snap.details.exchange).toBeUndefined();
+  });
+
+  it("adds no Finnhub extras without a key", async () => {
+    const providers = stubs();
+    const snap = await new QuoteService(() => null, { providers }).detailed("AAPL");
+    expect(snap.details.pe).toBeUndefined();
+    expect(snap.details.earnings).toBeUndefined();
+    expect(providers.finnhubMetric).not.toHaveBeenCalled();
+    expect(providers.finnhubEarnings).not.toHaveBeenCalled();
   });
 
   it("asks Nasdaq for market cap on a US equity without a key", async () => {
@@ -132,6 +148,35 @@ describe("QuoteService.detailed", () => {
   it("leaves market cap out when Nasdaq fails", async () => {
     const snap = await new QuoteService(() => null, { providers: stubs({ nasdaqMarketCap: fail("unavailable") }) }).detailed("AAPL");
     expect(snap.details.marketCap).toBeUndefined();
+  });
+});
+
+describe("QuoteService.earnings", () => {
+  it("needs a key, caches for hours, and swallows failures", async () => {
+    let now = Date.parse("2026-10-20T15:00:00Z");
+    const providers = stubs();
+    expect(await new QuoteService(() => null, { providers }).earnings("AAPL")).toBeUndefined();
+    expect(providers.finnhubEarnings).not.toHaveBeenCalled();
+
+    const service = new QuoteService(() => "k", { providers, now: () => now });
+    expect(await service.earnings("aapl")).toEqual({ date: "2026-10-29", hour: "amc" });
+    expect(providers.finnhubEarnings).toHaveBeenCalledWith("AAPL", "k", "2026-10-20");
+    await service.earnings("AAPL");
+    expect(providers.finnhubEarnings).toHaveBeenCalledTimes(1);
+    now += 7 * 60 * 60_000;
+    await service.earnings("AAPL");
+    expect(providers.finnhubEarnings).toHaveBeenCalledTimes(2);
+
+    const failing = new QuoteService(() => "k", { providers: stubs({ finnhubEarnings: fail("no-access") }) });
+    expect(await failing.earnings("VOD.L")).toBeUndefined();
+  });
+
+  it("dates by Wall Street's calendar", () => {
+    // 02:00 UTC on the 21st is still the 20th in New York.
+    expect(exchangeDate(Date.parse("2026-10-21T02:00:00Z"))).toBe("2026-10-20");
+    expect(daysUntil("2026-10-29", "2026-10-20")).toBe(9);
+    expect(daysUntil("2026-11-02", "2026-10-31")).toBe(2);
+    expect(daysUntil("2026-10-19", "2026-10-20")).toBe(-1);
   });
 });
 

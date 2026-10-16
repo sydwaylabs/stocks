@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildDetail, SearchSession, typeLabel } from "./detail-data.js";
+import { buildDetail, formatEarnings, SearchSession, typeLabel } from "./detail-data.js";
 import type { Snapshot } from "./quotes.js";
 import { renderPage, scriptJson } from "./window-page.js";
 
@@ -62,6 +62,25 @@ describe("detail data", () => {
     expect(d.rows).toEqual([]);
     expect(d.points).toEqual([]);
     expect(d.trend).toBe("flat");
+  });
+
+  it("adds the Finnhub rows when they are there", () => {
+    const d = buildDetail({
+      ...snap,
+      details: { ...snap.details, pe: 31.24, eps: 6.1, dividendYield: 0.4412, beta: 1.2, earnings: { date: "2026-10-29", hour: "amc" }, industry: "Technology", country: "US", website: "https://www.apple.com/" },
+    });
+    expect(d.rows.map((r) => r.label)).toEqual([
+      "Previous close", "Market cap", "Volume", "P/E (TTM)", "EPS (TTM)", "Dividend yield", "Beta", "Next earnings", "Type",
+    ]);
+    expect(d.rows.find((r) => r.label === "Dividend yield")?.value).toBe("0.44%");
+    expect(d.company).toBe("Technology · US");
+    expect(d.website).toBe("https://www.apple.com/");
+  });
+
+  it("formats an earnings date as written, with its session", () => {
+    expect(formatEarnings({ date: "2026-10-29", hour: "amc" })).toBe("Thu Oct 29, after close");
+    expect(formatEarnings({ date: "2026-11-02", hour: "bmo" })).toBe("Mon Nov 2, before open");
+    expect(formatEarnings({ date: "2026-11-02" })).toBe("Mon Nov 2");
   });
 
   it("notes a rejected key", () => {
