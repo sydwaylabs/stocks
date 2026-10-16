@@ -209,6 +209,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   /* What is drawn now, and where the pointer is over it (0–1), so a redraw keeps the crosshair. */
   var shown = null;
   var hoverAt = null;
+  /* Today's move, from the quote; shown under the price while the 1D chart is up. */
+  var today = null;
   var fitTimer = 0;
 
   var $ = function (id) { return document.getElementById(id); };
@@ -314,9 +316,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     $("d-name").textContent = d.name;
     $("d-price").textContent = d.price;
     $("d-ccy").textContent = d.currency || "";
-    var move = $("d-move");
-    move.className = "move " + d.trend;
-    move.textContent = [d.change, d.changePct ? "(" + d.changePct + ")" : ""].join(" ").trim() + " today";
+    today = d;
+    renderMove();
     chart1d = d.chart || null;
     if (range === "1d") renderChart(chart1d);
 
@@ -393,6 +394,20 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     }).catch(function () { if (range === next) chartNotice("The plugin is not responding."); });
   }
 
+  /*
+   * The figure under the price follows the chart: today's move on 1D, the move across the range
+   * otherwise — so the number, the line's colour and the dashed line always tell one story.
+   */
+  function renderMove() {
+    var move = $("d-move");
+    var c = range === "1d" ? null : shown;
+    var src = c && c.range === range ? c : today;
+    if (!src) { move.textContent = ""; return; }
+    move.className = "move " + src.trend;
+    var label = src === today ? "today" : RANGE_NAMES[range];
+    move.textContent = [src.change, src.changePct ? "(" + src.changePct + ")" : ""].join(" ").trim() + " " + label;
+  }
+
   function chartNotice(text) {
     shown = null;
     $("d-chart").replaceChildren(el("div", "chart-empty", text));
@@ -406,6 +421,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   function renderChart(c) {
     if (!c || c.points.length < 2) { chartNotice("No chart data"); return; }
     shown = c;
+    renderMove();
     drawChart($("d-chart"), c);
     if (hoverAt !== null) hover(hoverAt);
 
@@ -442,8 +458,11 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       caption.textContent = current ? "Today"
         : new Date(end - 60000).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
     } else {
-      caption.className = "chart-caption " + c.trend;
-      caption.textContent = [c.changePct, RANGE_NAMES[c.range]].join(" ").trim();
+      /* The move over the range is under the price now; the caption says which dates it spans. */
+      caption.className = "chart-caption";
+      var from = new Date(c.points[0].t), to = new Date(c.points[c.points.length - 1].t);
+      var opts = from.getFullYear() === to.getFullYear() ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" };
+      caption.textContent = from.toLocaleDateString([], opts) + " – " + to.toLocaleDateString([], opts);
     }
   }
 
