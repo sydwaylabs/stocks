@@ -100,6 +100,12 @@ export type ServeWindowOptions = {
    * something for an id it does not recognise.
    */
   renderRoute?: (pathname: string, params: URLSearchParams) => string | null;
+  /**
+   * Serves a binary asset — an image the page shows — at `/asset/<name>`. Return null and the
+   * request 404s. Same rule as renderRoute: validate the parameters against what the page is
+   * showing, and never map them onto a file path.
+   */
+  serveAsset?: (name: string, params: URLSearchParams) => Promise<{ type: string; body: Buffer } | null>;
   /** Hands back a closer so the caller can dismiss the window when its key goes away. */
   onOpen?: (close: () => void) => void;
   onWarn?: (message: string) => void;
@@ -216,6 +222,25 @@ export async function serveWindow(
           "Content-Type": "text/html; charset=utf-8",
           "Cache-Control": "no-store, no-cache, must-revalidate",
         }).end(extra);
+        return;
+      }
+
+      if (url.pathname.startsWith("/asset/") && options.serveAsset) {
+        options.serveAsset(url.pathname.slice("/asset/".length), url.searchParams)
+          .then((asset) => {
+            if (!asset) { res.writeHead(404).end("not found"); return; }
+            res.writeHead(200, {
+              "Content-Type": asset.type,
+              "Content-Length": asset.body.length,
+              // Within one window, a refresh need not ask again; nothing outlives the window.
+              "Cache-Control": "private, max-age=3600",
+              "X-Content-Type-Options": "nosniff",
+            }).end(asset.body);
+          })
+          .catch((error: unknown) => {
+            warn(`asset ${url.pathname} failed: ${error instanceof Error ? error.message : String(error)}`);
+            res.writeHead(404).end("not found");
+          });
         return;
       }
 

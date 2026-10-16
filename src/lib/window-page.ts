@@ -352,7 +352,9 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     /* The initial sits under the logo, so a logo that fails or is slow still leaves a mark. */
     $("d-mono").textContent = initialOf(d.name, d.symbol);
     var logo = $("d-logo");
-    if (d.logo && logo.getAttribute("src") !== d.logo) { logo.hidden = true; logo.setAttribute("src", d.logo); }
+    /* A local address from the plugin's cache; the token gates it like every other route. */
+    var logoSrc = d.logo ? d.logo + "&t=" + encodeURIComponent(TOKEN) : "";
+    if (logoSrc && logo.getAttribute("src") !== logoSrc) { logo.hidden = true; logo.setAttribute("src", logoSrc); }
     if (!d.logo) { logo.hidden = true; logo.removeAttribute("src"); }
     logo.onload = function () { logo.hidden = false; };
     logo.onerror = function () { logo.hidden = true; };

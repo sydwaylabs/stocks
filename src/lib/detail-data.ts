@@ -22,6 +22,7 @@ export type DetailData = {
   rows: { label: string; value: string }[];
   /** Company facts from a Finnhub key: industry and country, already joined. */
   company?: string;
+  /** Finnhub's URL when built; the window swaps it for its own cached /asset/logo address. */
   logo?: string;
   website?: string;
   source: string;

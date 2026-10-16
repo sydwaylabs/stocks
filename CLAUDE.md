@@ -38,6 +38,10 @@ window; an empty key opens search on any press.
 - **Chart**: `src/lib/chart-data.ts` lays it out (x positions, ticks as epoch ms); the page
   formats times in the Mac's zone. 1D is on the session clock from Yahoo's `tradingPeriods`;
   longer ranges are spaced by bar. `QuoteService.chart` caches longer ranges for 10 minutes.
+- **Logos** are cached in `~/Library/Caches/com.sydwaylabs.stocks/logos/` (`src/lib/logo-cache.ts`,
+  30 days, raster images only, sniffed by their bytes) and served to the window at
+  `/asset/logo?symbol=…` — a route added to `src/window-host.ts` (`serveAsset`), worth harvesting
+  into the kit. The page never loads anything from the internet.
 - **Palette departure**: the chart's range selector is a neutral grey pill, not the house
   `--accent` green — in the detail view green means "price up", so a green selection reads as
   data. Search keeps the house green, which has no price colours to collide with.

@@ -1,7 +1,10 @@
 import streamDeck from "@elgato/streamdeck";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 import { buildChart } from "./lib/chart-data.js";
 import { buildDetail, SearchSession, typeLabel } from "./lib/detail-data.js";
+import { LogoCache } from "./lib/logo-cache.js";
 import { CHART_RANGES, ProviderError, type ChartRange, type SearchResult } from "./lib/providers/types.js";
 import type { QuoteService } from "./lib/quotes.js";
 import { renderPage, WINDOW_HEIGHT, WINDOW_WIDTH } from "./lib/window-page.js";
@@ -12,6 +15,9 @@ import { findHosts, serveWindow, WindowLaunchError, type WindowMessage } from ".
  * Resolves when the window closes. The caller keeps the closer from `onOpen` so a key that goes
  * away takes its window with it.
  */
+
+/** One cache for every window and key: ~/Library/Caches is where macOS expects re-creatable files. */
+const logos = new LogoCache(join(homedir(), "Library", "Caches", "com.sydwaylabs.stocks", "logos"));
 
 /** A window left alone this long closes. Only interaction re-arms it; the 30s poll does not. */
 const IDLE_TIMEOUT_MS = 10 * 60_000;
@@ -29,6 +35,9 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
   const session = new SearchSession();
   // Grows as the window shows company websites; serveWindow opens only exact entries.
   const links: string[] = [];
+  // Finnhub's logo URL per symbol this window has shown. The page asks for /asset/logo by symbol,
+  // and only a symbol in here — the one on screen — is answered.
+  const logoUrls = new Map<string, string>();
   const initialSymbol = options.symbol();
   const mode = initialSymbol ? "detail" : "search";
   const windowTitle = initialSymbol ? `Stocks — ${initialSymbol.slice(0, 16)}` : "Stocks — choose a symbol";
@@ -41,6 +50,11 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         try {
           const detail = buildDetail(await options.quotes.detailed(symbol));
           if (detail.website && !links.includes(detail.website)) links.push(detail.website);
+          if (detail.logo) {
+            logoUrls.set(detail.symbol, detail.logo);
+            // The page loads it from the plugin, which keeps it on disk; never from the internet.
+            detail.logo = `/asset/logo?symbol=${encodeURIComponent(detail.symbol)}`;
+          }
           return { detail };
         } catch (error) {
           return { message: describe(error, symbol) };
@@ -90,6 +104,12 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         height: WINDOW_HEIGHT,
         title: windowTitle,
         links,
+        serveAsset: async (name, params) => {
+          const symbol = params.get("symbol") ?? "";
+          const url = logoUrls.get(symbol);
+          if (name !== "logo" || !url || symbol !== options.symbol().toUpperCase()) return null;
+          return logos.get(symbol, url);
+        },
       });
       return;
     } catch (error) {
