@@ -1,0 +1,51 @@
+{
+	"$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+	"UUID": "com.sydwaylabs.stocks",
+	"Name": "Stocks",
+	"Version": "0.1.0.100",
+	"Author": "Sydway Labs",
+	"Description": "Live stock, ETF and crypto quotes on your keys — works out of the box, with an optional free Finnhub key.",
+	"Category": "Sydway Labs Stocks",
+	"CategoryIcon": "imgs/plugin/category",
+	"Icon": "imgs/plugin/marketplace",
+	"URL": "https://github.com/sydwaylabs/stocks",
+	"Actions": [
+		{
+			"Name": "Ticker",
+			"UUID": "com.sydwaylabs.stocks.ticker",
+			"Icon": "imgs/actions/ticker/icon",
+			"Tooltip": "What one press does, and what a hold does.",
+			"PropertyInspectorPath": "ui/ticker.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/ticker/empty",
+					"TitleAlignment": "middle",
+					"Name": "Empty"
+				},
+				{
+					"Image": "imgs/actions/ticker/filled",
+					"TitleAlignment": "middle",
+					"Name": "Filled"
+				}
+			]
+		}
+	],
+	"CodePath": "bin/plugin.js",
+	"Nodejs": {
+		"Version": "20",
+		"Debug": "enabled"
+	},
+	"SDKVersion": 3,
+	"Software": {
+		"MinimumVersion": "6.9"
+	},
+	"OS": [
+		{
+			"Platform": "mac",
+			"MinimumVersion": "12"
+		}
+	]
+}

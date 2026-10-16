@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+
+# Build products: the bundle and the native host are rebuilt by `npm run release`.
+com.sydwaylabs.stocks.sdPlugin/bin/
+com.sydwaylabs.stocks.sdPlugin/logs/
+
+# The packed archive is a release asset, attached to the GitHub release rather than committed.
+*.streamDeckPlugin

@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head lang="en">
+  <meta charset="utf-8" />
+  <!-- Vendored, never from a CDN: the inspector has to render with no network. -->
+  <script src="sdpi-components.js"></script>
+  <style>
+    /* sdpi-components defines none of the host's --sdpi-* variables, so every var() needs a
+       fallback or it resolves to black text on a dark panel. The release gate checks this. */
+    .hint { color: var(--sdpi-color, #d8d8d8); opacity: 0.7; font-size: 9pt; margin: 4px 0 0; }
+  </style>
+</head>
+<body>
+  <!-- Numbers arrive in the plugin as strings; coerce them in mergeWithDefaults. -->
+  <sdpi-item label="Interval (ms)">
+    <sdpi-textfield setting="intervalMs" placeholder="60000" pattern="[0-9]+"></sdpi-textfield>
+  </sdpi-item>
+  <p class="hint">Press to look, hold to act.</p>
+
+  <!-- Label as slotted text; a title attribute renders an unlabelled button. -->
+  <sdpi-item label="">
+    <sdpi-button id="reset">Reset</sdpi-button>
+  </sdpi-item>
+
+  <script>
+    // Every message gets an `event` discriminator, even when there is only one.
+    document.getElementById("reset")?.addEventListener("click", () =>
+      SDPIComponents.streamDeckClient.send("sendToPlugin", { event: "reset" }));
+  </script>
+</body>
+</html>
