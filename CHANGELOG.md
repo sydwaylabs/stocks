@@ -14,7 +14,7 @@ notes and the Marketplace "what's new" text are generated from this file.
 
 - **Ticker** shows a live quote for any stock, ETF, fund, index or coin: price, today's change and
   a sparkline, refreshed every 1, 5 or 15 minutes. Quotes that are more than two refreshes old are
-  dimmed.
+  dimmed. Today's change can be shown as a percentage or as an amount.
 - Press an empty key to search by company or fund name, so you never need to know the ticker.
 - Press to refresh; hold for a window with an intraday chart, day and 52-week ranges, volume,
   market cap and a **Change symbol** button.

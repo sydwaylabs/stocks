@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { compact, formatChange, formatPct, formatPrice } from "./format.js";
+import { compact, formatChange, formatChangeShort, formatPct, formatPrice } from "./format.js";
 import { escapeXml, mixHex, numberFont, renderKey, sparkline, symbolFont } from "./key-image.js";
 
 describe("format", () => {
@@ -22,6 +22,16 @@ describe("format", () => {
     expect(formatPct(undefined)).toBe("");
   });
 
+  it("formats the move as an amount for the key", () => {
+    expect(formatChangeShort(1.46, "USD")).toBe("+$1.46");
+    expect(formatChangeShort(-0.52, "GBP")).toBe("-£0.52");
+    expect(formatChangeShort(-371.625, "USD")).toBe("-$371.63");
+    expect(formatChangeShort(-1234.5, "USD")).toBe("-$1,235");
+    expect(formatChangeShort(0.5, "GBp")).toBe("+0.50");
+    expect(formatChangeShort(0, undefined)).toBe("0.00");
+    expect(formatChangeShort(undefined, "USD")).toBe("");
+  });
+
   it("formats change and big numbers", () => {
     expect(formatChange(-0.07)).toBe("-0.07");
     expect(formatChange(1.2)).toBe("+1.20");
@@ -35,7 +45,7 @@ describe("format", () => {
 describe("key image", () => {
   const quote = {
     kind: "quote" as const, symbol: "AAPL", price: 343.46, change: 1.46, changePct: 0.43,
-    points: [340, 342, 341, 343.46], prevClose: 342, display: "price" as const, stale: false,
+    points: [340, 342, 341, 343.46], prevClose: 342, currency: "USD", display: "price" as const, changeAs: "percent" as const, stale: false,
   };
 
   it("draws a 144 square svg for every view", () => {
@@ -53,6 +63,13 @@ describe("key image", () => {
       expect(svg).toContain('viewBox="0 0 144 144"');
       expect(svg).not.toMatch(/rgba\(/);
     }
+  });
+
+  it("shows the move as a percentage or an amount", () => {
+    expect(renderKey(quote)).toContain("+0.43%");
+    expect(renderKey({ ...quote, changeAs: "amount" })).toContain("+$1.46");
+    expect(renderKey({ ...quote, changeAs: "amount" })).not.toContain("%");
+    expect(renderKey({ ...quote, display: "change", changeAs: "amount" })).toContain("+$1.46");
   });
 
   it("colours by trend and dims when stale", () => {

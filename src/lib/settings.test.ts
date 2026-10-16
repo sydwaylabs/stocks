@@ -4,7 +4,7 @@ import { mergeWithDefaults } from "./settings.js";
 
 describe("mergeWithDefaults", () => {
   it("fills a new key with defaults", () => {
-    expect(mergeWithDefaults({})).toEqual({ symbol: "", name: "", intervalMin: 5, display: "price" });
+    expect(mergeWithDefaults({})).toEqual({ symbol: "", name: "", intervalMin: 5, display: "price", changeAs: "percent" });
     expect(mergeWithDefaults(undefined).intervalMin).toBe(5);
   });
 
@@ -22,5 +22,7 @@ describe("mergeWithDefaults", () => {
   it("accepts only known display modes", () => {
     expect(mergeWithDefaults({ display: "change" }).display).toBe("change");
     expect(mergeWithDefaults({ display: "nonsense" as "price" }).display).toBe("price");
+    expect(mergeWithDefaults({ changeAs: "amount" }).changeAs).toBe("amount");
+    expect(mergeWithDefaults({ changeAs: "nonsense" as "amount" }).changeAs).toBe("percent");
   });
 });

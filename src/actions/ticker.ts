@@ -218,7 +218,9 @@ export class Ticker extends SingletonAction<TickerSettings> {
       changePct: last.quote.changePct,
       points: last.series?.points,
       prevClose: last.quote.prevClose,
+      currency: last.quote.currency,
       display: settings.display,
+      changeAs: settings.changeAs,
       // Twice the interval: one missed refresh is a blip, two means the numbers are old.
       stale: Date.now() - last.fetchedAt > 2 * intervalMs(settings),
     });

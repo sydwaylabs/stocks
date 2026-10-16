@@ -15,7 +15,8 @@ Each key shows one symbol — a stock, ETF, fund, index or coin — with its pri
 and a sparkline of the day. Drag a Ticker onto a key, press it, type a company name ("apple",
 "vanguard s&p", "bitcoin") and pick from the results; there is no need to know the ticker. A
 symbol can also be typed straight into the key's settings, which also set how often it refreshes
-(1, 5 or 15 minutes) and whether it shows the price or only the change.
+(1, 5 or 15 minutes), whether it shows the price or only the change, and whether the change is
+shown as a percentage (+1.23%) or an amount (+$4.20).
 
 A refresh only reads public quotes, so a tap is safe to act on; the hold opens the window, as on
 every Sydway Labs key. A key whose numbers are more than two refreshes old is drawn dimmed.

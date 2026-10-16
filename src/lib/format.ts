@@ -41,6 +41,22 @@ export function formatChange(change: number | undefined): string {
   return `${change > 0 ? "+" : change < 0 ? "-" : ""}${text}`;
 }
 
+/** Currencies whose sign fits on a key; anything else shows the bare number. */
+const CURRENCY_SIGNS: Record<string, string> = { USD: "$", EUR: "€", GBP: "£", JPY: "¥", CAD: "$", AUD: "$", HKD: "$", INR: "₹" };
+
+/**
+ * Today's move as an amount for the key: `+$1.46`, `-£0.52`, `-$1,234`. Kept to about eight
+ * characters, so whole units above a thousand, cents below.
+ */
+export function formatChangeShort(change: number | undefined, currency?: string): string {
+  if (change === undefined) return "";
+  const abs = Math.abs(change);
+  const sign = change > 0 ? "+" : change < 0 ? "-" : "";
+  const unit = (currency && CURRENCY_SIGNS[currency]) ?? "";
+  const digits = abs >= 1000 ? grouped(0).format(abs) : abs >= 0.01 || abs === 0 ? grouped(2).format(abs) : abs.toPrecision(2);
+  return `${sign}${unit}${digits}`;
+}
+
 /** 3.12T, 845.2B, 12.0M, 950K — market cap and volume. */
 export function compact(value: number): string {
   const abs = Math.abs(value);

@@ -1,4 +1,4 @@
-import { formatPct, formatPrice, trendOf, type Trend } from "./format.js";
+import { formatChangeShort, formatPct, formatPrice, trendOf, type Trend } from "./format.js";
 
 /**
  * Draws the ticker key as a 144×144 SVG (the @2x size).
@@ -20,7 +20,10 @@ export type KeyView =
       changePct?: number;
       points?: number[];
       prevClose?: number;
+      currency?: string;
       display: "price" | "change";
+      /** Today's move as a percentage or as an amount in the quote's currency. */
+      changeAs: "percent" | "amount";
       stale: boolean;
     }
   | { kind: "error"; symbol: string; message: string; hint?: string };
@@ -119,15 +122,15 @@ export function renderKey(view: KeyView): string {
       const sym = symbolFont(view.symbol);
       parts.push(text(mid, 34, sym.size, fade(FG), sym.text));
 
-      const pct = formatPct(view.changePct);
-      if (view.display === "change" && pct) {
-        parts.push(text(mid, 80, numberFont(pct), colour, pct));
+      const move = view.changeAs === "amount" ? formatChangeShort(view.change, view.currency) : formatPct(view.changePct);
+      if (view.display === "change" && move) {
+        parts.push(text(mid, 80, numberFont(move), colour, move));
         parts.push(sparkline(view.points ?? [], view.prevClose, mixHex(BG, colour, 0.6), { x: 14, y: 96, w: 116, h: 32 }));
       } else {
         const price = formatPrice(view.price);
         parts.push(text(mid, 72, numberFont(price), fade(FG), price));
         parts.push(sparkline(view.points ?? [], view.prevClose, mixHex(BG, colour, 0.5), { x: 14, y: 84, w: 116, h: 26 }));
-        if (pct) parts.push(text(mid, 136, 22, colour, pct));
+        if (move) parts.push(text(mid, 136, move.length > 8 ? 19 : 22, colour, move));
       }
       break;
     }

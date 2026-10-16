@@ -8,14 +8,15 @@ export type TickerSettings = {
   /** Minutes between refreshes. Arrives from the inspector as a string. */
   intervalMin?: number;
   display?: "price" | "change";
+  changeAs?: "percent" | "amount";
 };
 
 /** Fields the inspector edits, written once on a new key so it never shows a placeholder as a value. */
-export const EDITABLE = ["symbol", "intervalMin", "display"] as const;
+export const EDITABLE = ["symbol", "intervalMin", "display", "changeAs"] as const;
 
 export const INTERVALS = [1, 5, 15] as const;
 
-const DEFAULTS: Required<TickerSettings> = { symbol: "", name: "", intervalMin: 5, display: "price" };
+const DEFAULTS: Required<TickerSettings> = { symbol: "", name: "", intervalMin: 5, display: "price", changeAs: "percent" };
 
 /**
  * One place where saved settings are merged and coerced. sdpi-components saves every field as a
@@ -30,5 +31,6 @@ export function mergeWithDefaults(saved: Partial<TickerSettings> | undefined): R
     name: typeof base.name === "string" ? base.name : "",
     intervalMin: (INTERVALS as readonly number[]).includes(interval) ? interval : DEFAULTS.intervalMin,
     display: base.display === "change" ? "change" : "price",
+    changeAs: base.changeAs === "amount" ? "amount" : "percent",
   };
 }
