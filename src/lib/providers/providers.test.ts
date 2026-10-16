@@ -35,10 +35,22 @@ describe("yahoo chart", () => {
     expect(details.marketCap).toBeUndefined();
   });
 
-  it("drops null gaps from the series", () => {
+  it("drops null gaps from the series, keeping times aligned", () => {
     const { series } = parseChart(fixture("yahoo-chart-aapl.json"), "AAPL");
     expect(series.points).toHaveLength(11);
+    expect(series.times).toHaveLength(11);
     expect(series.points.every(Number.isFinite)).toBe(true);
+    // The fixture's fourth close is null, so the fourth time kept is the fifth bar's.
+    expect(series.times[3] - series.times[2]).toBe(10 * 60_000);
+    expect(series.utcOffset).toBe(-4 * 3600_000);
+  });
+
+  it("reads the session and baseline", () => {
+    const { series, quote } = parseChart(fixture("yahoo-chart-aapl.json"), "AAPL");
+    expect(series.session!.end - series.session!.start).toBe(6.5 * 3600_000);
+    expect(series.baseline).toBe(quote.prevClose);
+    const multiDay = { chart: { result: [{ meta: { regularMarketPrice: 1, tradingPeriods: [[{ start: 1, end: 2 }], [{ start: 3, end: 4 }]] } }] } };
+    expect(parseChart(multiDay, "X").series.session).toBeUndefined();
   });
 
   it("parses crypto", () => {

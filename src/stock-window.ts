@@ -1,7 +1,8 @@
 import streamDeck from "@elgato/streamdeck";
 
+import { buildChart } from "./lib/chart-data.js";
 import { buildDetail, SearchSession, typeLabel } from "./lib/detail-data.js";
-import { ProviderError, type SearchResult } from "./lib/providers/types.js";
+import { CHART_RANGES, ProviderError, type ChartRange, type SearchResult } from "./lib/providers/types.js";
 import type { QuoteService } from "./lib/quotes.js";
 import { renderPage, WINDOW_HEIGHT, WINDOW_WIDTH } from "./lib/window-page.js";
 import { findHosts, serveWindow, WindowLaunchError, type WindowMessage } from "./window-host.js";
@@ -41,6 +42,16 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
           const detail = buildDetail(await options.quotes.detailed(symbol));
           if (detail.website && !links.includes(detail.website)) links.push(detail.website);
           return { detail };
+        } catch (error) {
+          return { message: describe(error, symbol) };
+        }
+      }
+      case "chart": {
+        const symbol = options.symbol();
+        const range = message.range as ChartRange;
+        if (!symbol || !CHART_RANGES.includes(range)) return { message: "No chart for that." };
+        try {
+          return { chart: buildChart(await options.quotes.chart(symbol, range), range) };
         } catch (error) {
           return { message: describe(error, symbol) };
         }

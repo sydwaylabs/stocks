@@ -8,7 +8,7 @@ A Stream Deck plugin by Sydway Labs, for macOS 12 or later and Stream Deck 6.9 o
 
 | Action | Press | Hold |
 |---|---|---|
-| **Ticker** (symbol set) | Refresh now | Open the detail window: intraday chart, day and 52-week ranges, volume, market cap, and **Change symbol** |
+| **Ticker** (symbol set) | Refresh now | Open the detail window: a chart (1D, 5D, 1M, 6M, 1Y), day and 52-week ranges, volume, market cap, and **Change symbol** |
 | **Ticker** (empty key) | Open search | Open search |
 
 Each key shows one symbol — a stock, ETF, fund, index or coin — with its price, today's change

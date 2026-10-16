@@ -1,7 +1,7 @@
 import * as finnhub from "./providers/finnhub.js";
 import * as nasdaq from "./providers/nasdaq.js";
 import * as yahoo from "./providers/yahoo.js";
-import { ProviderError, type Details, type Earnings, type Quote, type SearchResult, type Series } from "./providers/types.js";
+import { ProviderError, type ChartRange, type Details, type Earnings, type Quote, type SearchResult, type Series } from "./providers/types.js";
 
 /**
  * Decides which source answers, and makes sure several keys on one symbol cost one request.
@@ -27,6 +27,7 @@ export type Snapshot = {
 export type Providers = {
   yahooChart: (symbol: string) => Promise<yahoo.ChartResult>;
   yahooSearch: (query: string) => Promise<SearchResult[]>;
+  yahooRange: (symbol: string, range: ChartRange) => Promise<yahoo.ChartResult>;
   finnhubQuote: (symbol: string, key: string) => Promise<Quote>;
   finnhubProfile: (symbol: string, key: string) => Promise<finnhub.Profile>;
   finnhubMetric: (symbol: string, key: string) => Promise<finnhub.Metric>;
@@ -38,6 +39,7 @@ export type Providers = {
 export const liveProviders: Providers = {
   yahooChart: (s) => yahoo.fetchChart(s),
   yahooSearch: (q) => yahoo.search(q),
+  yahooRange: (s, r) => yahoo.fetchRange(s, r),
   finnhubQuote: (s, k) => finnhub.fetchQuote(s, k),
   finnhubProfile: (s, k) => finnhub.fetchProfile(s, k),
   finnhubMetric: (s, k) => finnhub.fetchMetric(s, k),
@@ -50,6 +52,8 @@ export const liveProviders: Providers = {
 const QUOTE_TTL_MS = 20_000;
 /** Market cap, ratios and the earnings date barely move within a session. */
 const FUNDAMENTALS_TTL_MS = 60 * 60_000;
+/** A 5-day or longer chart changes slowly enough to keep while the window is open. */
+const RANGE_TTL_MS = 10 * 60_000;
 /** The earnings date for the key's badge; asked for once every few hours per symbol. */
 const EARNINGS_TTL_MS = 6 * 60 * 60_000;
 
@@ -68,6 +72,7 @@ export class QuoteService {
   private readonly inflight = new Map<string, Promise<Snapshot>>();
   private readonly fundamentals = new Map<string, Cached<Details>>();
   private readonly earningsCache = new Map<string, Cached<Earnings | undefined>>();
+  private readonly ranges = new Map<string, Cached<Series>>();
 
   constructor(
     private readonly getKey: () => string | null | Promise<string | null>,
@@ -124,6 +129,25 @@ export class QuoteService {
     const snap = await this.snapshot(id);
     const extra = await this.fetchFundamentals(id, snap);
     return { ...snap, details: { ...snap.details, ...definedOnly(extra) } };
+  }
+
+  /**
+   * The window's chart for a range. Today's comes from the quote already fetched; longer ranges are
+   * one Yahoo request each, asked for only when picked. Always Yahoo: Finnhub's free plan has no
+   * price history.
+   */
+  async chart(symbol: string, range: ChartRange): Promise<Series> {
+    const id = normalise(symbol);
+    if (range === "1d") {
+      const snap = await this.snapshot(id);
+      if (snap.series && snap.series.points.length > 1) return snap.series;
+    }
+    const key = `${id}:${range}`;
+    const cached = this.ranges.get(key);
+    if (cached && this.now() - cached.at < (range === "1d" ? QUOTE_TTL_MS : RANGE_TTL_MS)) return cached.value;
+    const { series } = await this.providers.yahooRange(id, range);
+    this.ranges.set(key, { at: this.now(), value: series });
+    return series;
   }
 
   /** Yahoo's search, falling back to Finnhub's when Yahoo is down and a key is set. */

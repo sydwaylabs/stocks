@@ -1,3 +1,4 @@
+import { buildChart, type ChartData } from "./chart-data.js";
 import { compact, formatChange, formatPct, formatPriceLong, trendOf, type Trend } from "./format.js";
 import type { Snapshot } from "./quotes.js";
 import type { Earnings, SearchResult } from "./providers/types.js";
@@ -16,8 +17,8 @@ export type DetailData = {
   change: string;
   changePct: string;
   trend: Trend;
-  points: number[];
-  prevClose?: number;
+  /** Today's chart. Longer ranges are asked for separately, when picked. */
+  chart?: ChartData;
   rows: { label: string; value: string }[];
   /** Company facts from a Finnhub key: industry and country, already joined. */
   company?: string;
@@ -61,8 +62,7 @@ export function buildDetail(snap: Snapshot): DetailData {
     change: formatChange(quote.change),
     changePct: formatPct(quote.changePct),
     trend: trendOf(quote.change ?? quote.changePct),
-    points: snap.series?.points ?? [],
-    prevClose: quote.prevClose,
+    chart: snap.series && snap.series.points.length > 1 ? buildChart(snap.series, "1d") : undefined,
     rows,
     company: [details.industry, details.country].filter(Boolean).join(" · ") || undefined,
     logo: details.logo,

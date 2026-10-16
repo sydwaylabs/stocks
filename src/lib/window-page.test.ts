@@ -37,7 +37,7 @@ describe("detail data", () => {
   const snap: Snapshot = {
     quote: { symbol: "AAPL", name: "Apple Inc.", currency: "USD", price: 343.46, prevClose: 342, change: 1.46, changePct: 0.427, dayHigh: 347.82, dayLow: 340.46, marketTime: 1, source: "yahoo" },
     details: { exchange: "NasdaqGS", instrumentType: "EQUITY", wk52High: 348.15, wk52Low: 243.42, volume: 59_768_020, marketCap: 5.01e12 },
-    series: { points: [342, 343] },
+    series: { points: [342, 343], times: [0, 1], utcOffset: 0 },
     fetchedAt: 2,
   };
 
@@ -58,7 +58,7 @@ describe("detail data", () => {
   it("leaves out what the source did not give", () => {
     const d = buildDetail({ quote: { symbol: "X", price: 1, source: "finnhub" }, details: {}, fetchedAt: 0 });
     expect(d.rows).toEqual([]);
-    expect(d.points).toEqual([]);
+    expect(d.chart).toBeUndefined();
     expect(d.trend).toBe("flat");
   });
 

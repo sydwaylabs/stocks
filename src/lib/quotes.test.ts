@@ -8,7 +8,7 @@ function chart(symbol: string, overrides: Partial<Quote> = {}): ChartResult {
   return {
     quote: { symbol, name: `${symbol} Inc`, currency: "USD", price: 100, prevClose: 98, change: 2, changePct: 2.04, source: "yahoo", ...overrides },
     details: { instrumentType: "EQUITY", wk52High: 120, wk52Low: 80, volume: 1000 },
-    series: { points: [98, 99, 100] },
+    series: { points: [98, 99, 100], times: [0, 1, 2], utcOffset: 0 },
   };
 }
 
@@ -23,6 +23,7 @@ function stubs(overrides: Partial<Providers> = {}): Providers {
   return {
     yahooChart: vi.fn(async (s: string) => chart(s)),
     yahooSearch: vi.fn(async () => [{ symbol: "AAPL", name: "Apple", type: "EQUITY" }]),
+    yahooRange: vi.fn(async (s: string) => ({ ...chart(s), series: { points: [1, 2, 3, 4], times: [0, 1, 2, 3], utcOffset: 0 } })),
     finnhubQuote: vi.fn(async (s: string) => finnhubQuote(s)),
     finnhubProfile: vi.fn(async () => ({ name: "Apple Inc", exchange: "NASDAQ", marketCap: 3e12, industry: "Technology", country: "US", website: "https://www.apple.com/" })),
     finnhubMetric: vi.fn(async () => ({ wk52High: 130, wk52Low: 70, pe: 31.2, eps: 6.1, dividendYield: 0.44, beta: 1.2 })),
@@ -190,6 +191,29 @@ describe("QuoteService.earnings", () => {
     expect(daysUntil("2026-10-29", "2026-10-20")).toBe(9);
     expect(daysUntil("2026-11-02", "2026-10-31")).toBe(2);
     expect(daysUntil("2026-10-19", "2026-10-20")).toBe(-1);
+  });
+});
+
+describe("QuoteService.chart", () => {
+  it("draws today from the quote already fetched, and longer ranges on request, cached", async () => {
+    let now = 1_000_000;
+    const providers = stubs();
+    const service = new QuoteService(() => null, { providers, now: () => now });
+    expect((await service.chart("AAPL", "1d")).points).toEqual([98, 99, 100]);
+    expect(providers.yahooRange).not.toHaveBeenCalled();
+    expect((await service.chart("AAPL", "5d")).points).toHaveLength(4);
+    await service.chart("aapl", "5d");
+    expect(providers.yahooRange).toHaveBeenCalledTimes(1);
+    expect(providers.yahooRange).toHaveBeenCalledWith("AAPL", "5d");
+    now += 11 * 60_000;
+    await service.chart("AAPL", "5d");
+    expect(providers.yahooRange).toHaveBeenCalledTimes(2);
+  });
+
+  it("fetches today's chart itself when the quote came without one", async () => {
+    const providers = stubs({ yahooChart: fail("unavailable") });
+    await new QuoteService(() => "k", { providers }).chart("AAPL", "1d");
+    expect(providers.yahooRange).toHaveBeenCalledWith("AAPL", "1d");
   });
 });
 

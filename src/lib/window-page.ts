@@ -19,7 +19,7 @@ export type WindowInit = {
 };
 
 export const WINDOW_WIDTH = 640;
-export const WINDOW_HEIGHT = 580;
+export const WINDOW_HEIGHT = 630;
 
 /** JSON that is safe inside a script block: `</script>` in data cannot end it. */
 export function scriptJson(value: unknown): string {
@@ -84,8 +84,18 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .ccy { color: var(--fg-dim); font-size: 13px; }
 .move { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .up { color: var(--good); } .down { color: var(--down); } .flat { color: var(--fg-dim); }
-.chart { margin: 12px 0 4px; background: var(--card); border: 1px solid var(--card-line); border-radius: 8px; height: 150px; }
+.chart-head { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 6px; }
+.seg { display: inline-flex; background: var(--card); border: 1px solid var(--card-line); border-radius: 7px; padding: 2px; gap: 2px; }
+.seg button { border: none; background: none; padding: 2px 9px; border-radius: 5px; font-size: 12px; color: var(--fg-dim); }
+.seg button:hover { color: var(--fg); }
+.seg button.on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.chart-caption { color: var(--fg-dim); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.chart { background: var(--card); border: 1px solid var(--card-line); border-radius: 8px; height: 150px; overflow: hidden; }
 .chart svg { display: block; width: 100%; height: 100%; }
+.axis { position: relative; height: 16px; margin: 4px 1px 0; }
+.tick { position: absolute; top: 0; transform: translateX(-50%); color: var(--fg-faint); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tick.start { transform: none; }
+.tick.end { transform: translateX(-100%); }
 .chart-empty { height: 100%; display: flex; align-items: center; justify-content: center; color: var(--fg-faint); }
 /* Stats in pairs, filled left to right. */
 .stats { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; margin-top: 12px; }
@@ -131,7 +141,14 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
   </div>
   <div class="price-row"><span class="price" id="d-price"></span><span class="ccy" id="d-ccy"></span></div>
   <div class="move" id="d-move"></div>
+  <div class="chart-head">
+    <div class="seg" id="ranges" role="tablist" aria-label="Chart range">
+      <button data-range="1d" class="on" role="tab">1D</button><button data-range="5d" role="tab">5D</button><button data-range="1mo" role="tab">1M</button><button data-range="6mo" role="tab">6M</button><button data-range="1y" role="tab">1Y</button>
+    </div>
+    <span class="chart-caption" id="chart-caption"></span>
+  </div>
   <div class="chart" id="d-chart"></div>
+  <div class="axis" id="d-axis"></div>
   <dl class="stats" id="d-rows"></dl>
   <p class="note" id="d-note" hidden></p>
   <p class="meta" id="d-meta"></p>
@@ -171,6 +188,10 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   var poll = 0;
   var lastPing = 0;
   var website = "";
+  /* View state lives here, not in the DOM: the 30-second poll rebuilds the detail view. */
+  var range = "1d";
+  var chart1d = null;
+  var rangeCharts = {};
   var fitTimer = 0;
 
   var $ = function (id) { return document.getElementById(id); };
@@ -243,7 +264,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       fit();
     } else {
       $("chip").textContent = symbol;
-      setFooter([["r", "refresh"], ["s", "change symbol"], ["esc", "close"]]);
+      setFooter([["1–5", "range"], ["r", "refresh"], ["s", "change symbol"], ["esc", "close"]]);
       loadDetail();
       poll = setInterval(loadDetail, 30000);
     }
@@ -279,7 +300,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     var move = $("d-move");
     move.className = "move " + d.trend;
     move.textContent = [d.change, d.changePct ? "(" + d.changePct + ")" : ""].join(" ").trim() + " today";
-    drawChart($("d-chart"), d.points, d.prevClose, d.trend);
+    chart1d = d.chart || null;
+    if (range === "1d") renderChart(chart1d);
 
     var rows = $("d-rows");
     rows.replaceChildren();
@@ -317,23 +339,95 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     return e;
   }
 
-  function drawChart(box, points, prevClose, trend) {
-    box.replaceChildren();
-    if (!points || points.length < 2) {
-      box.append(el("div", "chart-empty", "No intraday data"));
-      return;
+  var RANGE_NAMES = { "1d": "today", "5d": "past 5 days", "1mo": "past month", "6mo": "past 6 months", "1y": "past year" };
+
+  function sameLocalDay(a, b) {
+    var x = new Date(a), y = new Date(b);
+    return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate();
+  }
+
+  /* Axis labels in this Mac's own time zone: WebKit reads the system's zone data. */
+  function tickLabel(t) {
+    var d = new Date(t.t);
+    if (t.kind === "time") return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    if (t.kind === "day") return d.toLocaleDateString([], { weekday: "short" });
+    if (t.kind === "date") return d.toLocaleDateString([], { month: "short", day: "numeric" });
+    return d.toLocaleDateString([], { month: "short" });
+  }
+
+  function selectRange(next) {
+    range = next;
+    Array.prototype.forEach.call($("ranges").children, function (b) {
+      var on = b.getAttribute("data-range") === next;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-selected", String(on));
+    });
+    if (next === "1d") { renderChart(chart1d); return; }
+    if (rangeCharts[next]) { renderChart(rangeCharts[next]); return; }
+    chartNotice("Loading…");
+    var forSymbol = symbol;
+    post("chart", { range: next }).then(function (reply) {
+      if (forSymbol !== symbol) return;
+      if (reply && reply.chart) rangeCharts[next] = reply.chart;
+      if (range !== next) return;
+      if (reply && reply.chart) renderChart(reply.chart);
+      else chartNotice((reply && reply.message) || "No chart for this range.");
+    }).catch(function () { if (range === next) chartNotice("The plugin is not responding."); });
+  }
+
+  function chartNotice(text) {
+    $("d-chart").replaceChildren(el("div", "chart-empty", text));
+    $("d-axis").replaceChildren();
+    var caption = $("chart-caption");
+    caption.className = "chart-caption";
+    caption.textContent = "";
+  }
+
+  function renderChart(c) {
+    if (!c || c.points.length < 2) { chartNotice("No chart data"); return; }
+    drawChart($("d-chart"), c);
+
+    var axis = $("d-axis");
+    axis.replaceChildren();
+    c.ticks.forEach(function (t) {
+      var label = el("span", "tick", tickLabel(t));
+      label.style.left = (t.x * 100).toFixed(2) + "%";
+      if (t.x < 0.02) label.classList.add("start");
+      else if (t.x > 0.98) label.classList.add("end");
+      axis.append(label);
+    });
+
+    var caption = $("chart-caption");
+    if (c.range === "1d") {
+      caption.className = "chart-caption";
+      /* "Today" while the session runs or if it ended today here; otherwise the day it was —
+         a 24-hour market's day can start the evening before, so judge by the end. */
+      var now = Date.now();
+      var end = c.sessionEnd || c.sessionStart;
+      var current = !end || now <= end || sameLocalDay(end - 60000, now);
+      caption.textContent = current ? "Today"
+        : new Date(end - 60000).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+    } else {
+      caption.className = "chart-caption " + c.trend;
+      caption.textContent = [c.changePct, RANGE_NAMES[c.range]].join(" ").trim();
     }
-    var W = 600, H = 150, P = 10;
-    var values = prevClose != null ? points.concat([prevClose]) : points;
+  }
+
+  function drawChart(box, c) {
+    box.replaceChildren();
+    var W = 600, H = 150, P = 8;
+    var values = c.points.map(function (p) { return p.v; });
+    if (c.baseline != null) values.push(c.baseline);
     var lo = Math.min.apply(null, values), hi = Math.max.apply(null, values);
     var span = hi - lo || 1;
-    var x = function (i) { return P + (i / (points.length - 1)) * (W - 2 * P); };
+    var x = function (f) { return f * W; };
     var y = function (v) { return P + (1 - (v - lo) / span) * (H - 2 * P); };
-    var colour = trend === "down" ? "#ef4b4b" : trend === "up" ? "#29bd50" : "#8b8b93";
-    var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, preserveAspectRatio: "none", role: "img", "aria-label": "Today's price" });
-    if (prevClose != null) svg.append(svgEl("line", { x1: P, x2: W - P, y1: y(prevClose), y2: y(prevClose), stroke: "#515151", "stroke-dasharray": "3 4", "vector-effect": "non-scaling-stroke" }));
-    var line = points.map(function (v, i) { return x(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
-    svg.append(svgEl("polygon", { points: P + "," + (H - P) + " " + line + " " + (W - P) + "," + (H - P), fill: colour, "fill-opacity": 0.12 }));
+    var colour = c.trend === "down" ? "#ef4b4b" : c.trend === "up" ? "#29bd50" : "#8b8b93";
+    var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, preserveAspectRatio: "none", role: "img", "aria-label": "Price, " + RANGE_NAMES[c.range] });
+    if (c.baseline != null) svg.append(svgEl("line", { x1: 0, x2: W, y1: y(c.baseline), y2: y(c.baseline), stroke: "#515151", "stroke-dasharray": "3 4", "vector-effect": "non-scaling-stroke" }));
+    var line = c.points.map(function (p) { return x(p.x).toFixed(1) + "," + y(p.v).toFixed(1); }).join(" ");
+    var first = x(c.points[0].x).toFixed(1), last = x(c.points[c.points.length - 1].x).toFixed(1);
+    svg.append(svgEl("polygon", { points: first + "," + H + " " + line + " " + last + "," + H, fill: colour, "fill-opacity": 0.12 }));
     svg.append(svgEl("polyline", { points: line, fill: "none", stroke: colour, "stroke-width": 2, "stroke-linejoin": "round", "vector-effect": "non-scaling-stroke" }));
     box.append(svg);
   }
@@ -386,6 +480,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     post("select", { symbol: r.symbol }).then(function (reply) {
       if (!reply || !reply.ok) { renderResults((reply && reply.message) || "Could not set that symbol."); return; }
       symbol = r.symbol;
+      rangeCharts = {};
+      chart1d = null;
       if (openedForSearch) post("close");
       else { query = ""; show("detail"); }
     });
@@ -397,6 +493,9 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   });
 
   $("change").addEventListener("click", function () { show("search"); });
+  Array.prototype.forEach.call($("ranges").children, function (b) {
+    b.addEventListener("click", function () { selectRange(b.getAttribute("data-range")); });
+  });
   /* The plugin opens it only if it is the website it just sent for this symbol. */
   $("d-web").addEventListener("click", function () { if (website) post("openLink", { url: website }); });
 
@@ -421,7 +520,9 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       return;
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key === "r") loadDetail();
+    if (e.key === "r") { rangeCharts = {}; loadDetail(); if (range !== "1d") selectRange(range); }
+    var digit = ["1", "2", "3", "4", "5"].indexOf(e.key);
+    if (digit >= 0) selectRange(["1d", "5d", "1mo", "6mo", "1y"][digit]);
     if (e.key === "s") { e.preventDefault(); show("search"); }
   });
 

@@ -43,8 +43,24 @@ export type Details = {
 /** The next scheduled earnings report. `date` is the exchange's calendar date, YYYY-MM-DD. */
 export type Earnings = { date: string; hour?: "bmo" | "amc" | "dmh" };
 
-/** Intraday closes, oldest first. Gaps Yahoo leaves as null are dropped. */
-export type Series = { points: number[] };
+/**
+ * Closes, oldest first, with the epoch-ms time of each. Gaps Yahoo leaves as null are dropped from
+ * both, so `points[i]` was the price at `times[i]`.
+ */
+export type Series = {
+  points: number[];
+  times: number[];
+  /** The regular session the points belong to (one-day charts only), epoch ms. */
+  session?: { start: number; end: number };
+  /** The close before the first point: the line a chart is measured against. */
+  baseline?: number;
+  /** The exchange's offset from UTC in ms, for telling one of its trading days from the next. */
+  utcOffset: number;
+};
+
+/** The spans the window's chart offers. The key's sparkline is always "1d". */
+export const CHART_RANGES = ["1d", "5d", "1mo", "6mo", "1y"] as const;
+export type ChartRange = (typeof CHART_RANGES)[number];
 
 export type SearchResult = {
   symbol: string;

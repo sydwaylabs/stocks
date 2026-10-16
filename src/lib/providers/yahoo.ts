@@ -1,5 +1,5 @@
 import { getJson, type Fetch } from "./http.js";
-import { num, ProviderError, str, type Details, type Quote, type SearchResult, type Series } from "./types.js";
+import { num, ProviderError, str, type ChartRange, type Details, type Quote, type SearchResult, type Series } from "./types.js";
 
 /**
  * Yahoo Finance's chart and search endpoints. Unofficial and keyless: they are what the plugin
@@ -22,7 +22,7 @@ export function parseChart(body: unknown, symbol: string): ChartResult {
     throw new ProviderError(kind, `${symbol}: ${chart.error.description ?? chart.error.code ?? "error"}`);
   }
   const result = chart?.result?.[0] as
-    | { meta?: Record<string, unknown>; indicators?: { quote?: { close?: unknown[] }[] } }
+    | { meta?: Record<string, unknown>; timestamp?: unknown[]; indicators?: { quote?: { close?: unknown[] }[] } }
     | undefined;
   const meta = result?.meta;
   const price = num(meta?.regularMarketPrice);
@@ -36,7 +36,17 @@ export function parseChart(body: unknown, symbol: string): ChartResult {
   const marketTime = num(meta.regularMarketTime);
 
   const closes = result?.indicators?.quote?.[0]?.close ?? [];
-  const points = closes.map(num).filter((n): n is number => n !== undefined);
+  const stamps = result?.timestamp ?? [];
+  const points: number[] = [];
+  const times: number[] = [];
+  closes.forEach((raw, i) => {
+    const v = num(raw);
+    const t = num(stamps[i]);
+    if (v === undefined) return;
+    points.push(v);
+    // A response with no timestamps still draws, spaced evenly, rather than not at all.
+    times.push(t !== undefined ? t * 1000 : i);
+  });
 
   return {
     quote: {
@@ -59,8 +69,29 @@ export function parseChart(body: unknown, symbol: string): ChartResult {
       wk52Low: num(meta.fiftyTwoWeekLow),
       volume: num(meta.regularMarketVolume),
     },
-    series: { points },
+    series: {
+      points,
+      times,
+      session: sessionOf(meta),
+      baseline: num(meta.chartPreviousClose) ?? prevClose,
+      utcOffset: (num(meta.gmtoffset) ?? 0) * 1000,
+    },
   };
+}
+
+/**
+ * The regular session a one-day chart covers. `tradingPeriods` describes the day the data is from
+ * — Friday's, over a weekend — so it comes first; `currentTradingPeriod` is the fallback. Longer
+ * ranges have no single session and return undefined.
+ */
+function sessionOf(meta: Record<string, unknown>): Series["session"] {
+  const periods = Array.isArray(meta.tradingPeriods) ? (meta.tradingPeriods.flat(2) as Record<string, unknown>[]) : null;
+  // Several periods is a multi-day chart, which has no one session.
+  if (periods && periods.length !== 1) return undefined;
+  const period = periods?.[0] ?? (meta.currentTradingPeriod as { regular?: Record<string, unknown> } | undefined)?.regular;
+  const start = num(period?.start);
+  const end = num(period?.end);
+  return start !== undefined && end !== undefined && end > start ? { start: start * 1000, end: end * 1000 } : undefined;
 }
 
 export function parseSearch(body: unknown): SearchResult[] {
@@ -83,6 +114,14 @@ export function parseSearch(body: unknown): SearchResult[] {
 
 export async function fetchChart(symbol: string, fetchImpl?: Fetch): Promise<ChartResult> {
   const url = `${CHART_URL}${encodeURIComponent(symbol)}?range=1d&interval=5m&includePrePost=false`;
+  return parseChart(await getJson(url, { fetchImpl }), symbol);
+}
+
+/** Bar size per range: about 80–150 points each, enough for a smooth line and no more. */
+const INTERVALS: Record<ChartRange, string> = { "1d": "5m", "5d": "15m", "1mo": "60m", "6mo": "1d", "1y": "1d" };
+
+export async function fetchRange(symbol: string, range: ChartRange, fetchImpl?: Fetch): Promise<ChartResult> {
+  const url = `${CHART_URL}${encodeURIComponent(symbol)}?range=${range}&interval=${INTERVALS[range]}&includePrePost=false`;
   return parseChart(await getJson(url, { fetchImpl }), symbol);
 }
 

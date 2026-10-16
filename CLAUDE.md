@@ -35,6 +35,9 @@ window; an empty key opens search on any press.
 - **Finnhub key**: global settings, sealed with the keychain collection key
   (`patterns/keychain-secret-store`, `--collection-key` mode in `native/host.swift`). The inspector
   never binds it to a setting; it sends `setFinnhubKey` and the plugin checks, seals and stores.
+- **Chart**: `src/lib/chart-data.ts` lays it out (x positions, ticks as epoch ms); the page
+  formats times in the Mac's zone. 1D is on the session clock from Yahoo's `tradingPeriods`;
+  longer ranges are spaced by bar. `QuoteService.chart` caches longer ranges for 10 minutes.
 - **Window**: one page, two views (`src/lib/window-page.ts`). `select` is accepted only for a
   symbol in the last search results (`SearchSession`).
 - **Refresh**: the shared ticker (`src/tick.ts`), one subscription per key; the quote cache
