@@ -114,7 +114,16 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .readout-meta { color: var(--fg-dim); font-size: 11px; }
 .yaxis { position: relative; min-width: 24px; box-sizing: content-box; padding: 0 9px 0 8px; border-left: 1px solid var(--line); }
 .ytick { position: absolute; left: 8px; transform: translateY(-50%); color: var(--fg-faint); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.chart svg { display: block; width: 100%; height: 100%; }
+.chart svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+/* A new range or symbol draws its line in from the left; the 30-second refresh does not.
+   The grid stays put underneath, so only the data moves. */
+@keyframes reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.chart svg.reveal { animation: reveal 450ms cubic-bezier(.2, .7, .2, 1); }
+.axis.fade, .yaxis.fade { animation: fade-in 250ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .chart svg.reveal, .axis.fade, .yaxis.fade { animation: none; }
+}
 .axis { position: relative; height: 16px; margin: 4px 1px 0; }
 .tick { position: absolute; top: 0; transform: translateX(-50%); color: var(--fg-faint); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tick.start { transform: none; }
@@ -225,6 +234,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   /* What is drawn now, and where the pointer is over it (0–1), so a redraw keeps the crosshair. */
   var shown = null;
   var hoverAt = null;
+  var drawnKey = "";
   /* Today's move, from the quote; shown under the price while the 1D chart is up. */
   var today = null;
   var fitTimer = 0;
@@ -449,7 +459,17 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (!c || c.points.length < 2) { chartNotice("No chart data"); return; }
     shown = c;
     renderMove();
-    drawChart($("d-chart"), c);
+    /* Animate only when what is shown changed — a new range or symbol, or the first draw —
+       never when the poll redraws the same chart with a minute more data. */
+    var key = symbol + "|" + c.range;
+    var animate = key !== drawnKey;
+    drawnKey = key;
+    drawChart($("d-chart"), c, animate);
+    ["d-axis", "d-yaxis"].forEach(function (id) {
+      var n = $(id);
+      n.classList.remove("fade");
+      if (animate) { void n.offsetWidth; n.classList.add("fade"); }
+    });
     if (hoverAt !== null) hover(hoverAt);
 
     var yaxis = $("d-yaxis");
@@ -568,7 +588,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   });
   $("d-chart").addEventListener("pointerleave", unhover);
 
-  function drawChart(box, c) {
+  function drawChart(box, c, animate) {
     box.replaceChildren();
     var W = 600, H = 150;
     /* The plugin chose the span (with headroom) and the ticks, so labels and line agree. */
@@ -576,16 +596,20 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     var x = function (f) { return f * W; };
     var y = function (v) { return (1 - (v - c.yMin) / span) * H; };
     var colour = c.trend === "down" ? "#ef4b4b" : c.trend === "up" ? "#29bd50" : "#8b8b93";
-    var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, preserveAspectRatio: "none", role: "img", "aria-label": "Price, " + RANGE_NAMES[c.range] });
+    var view = { viewBox: "0 0 " + W + " " + H, preserveAspectRatio: "none" };
+    /* Two layers: the grid, which stays, and the data, which is what animates in. */
+    var grid = svgEl("svg", Object.assign({ "aria-hidden": "true" }, view));
+    var svg = svgEl("svg", Object.assign({ role: "img", "aria-label": "Price, " + RANGE_NAMES[c.range] }, view));
     c.yTicks.forEach(function (t) {
-      svg.append(svgEl("line", { x1: 0, x2: W, y1: y(t.v), y2: y(t.v), stroke: "#3a3a3a", "stroke-width": 1, "vector-effect": "non-scaling-stroke" }));
+      grid.append(svgEl("line", { x1: 0, x2: W, y1: y(t.v), y2: y(t.v), stroke: "#3a3a3a", "stroke-width": 1, "vector-effect": "non-scaling-stroke" }));
     });
-    if (c.baseline != null) svg.append(svgEl("line", { x1: 0, x2: W, y1: y(c.baseline), y2: y(c.baseline), stroke: "#515151", "stroke-dasharray": "3 4", "vector-effect": "non-scaling-stroke" }));
+    if (c.baseline != null) grid.append(svgEl("line", { x1: 0, x2: W, y1: y(c.baseline), y2: y(c.baseline), stroke: "#515151", "stroke-dasharray": "3 4", "vector-effect": "non-scaling-stroke" }));
     var line = c.points.map(function (p) { return x(p.x).toFixed(1) + "," + y(p.v).toFixed(1); }).join(" ");
     var first = x(c.points[0].x).toFixed(1), last = x(c.points[c.points.length - 1].x).toFixed(1);
     svg.append(svgEl("polygon", { points: first + "," + H + " " + line + " " + last + "," + H, fill: colour, "fill-opacity": 0.12 }));
     svg.append(svgEl("polyline", { points: line, fill: "none", stroke: colour, "stroke-width": 2, "stroke-linejoin": "round", "vector-effect": "non-scaling-stroke" }));
-    box.append(svg);
+    if (animate) svg.classList.add("reveal");
+    box.append(grid, svg);
   }
 
   /* ---- search ---- */
