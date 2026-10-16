@@ -24,6 +24,8 @@ notes and the Marketplace "what's new" text are generated from this file.
   change at any point.
 - Works with no account or API key. An optional free Finnhub key, shared by every Stocks key, adds
   an official quote source; it is checked before saving and stored encrypted.
+- The detail window leads with the company's logo as a large tile — or its initial when there is
+  no logo, so every symbol gets the same header.
 - With a Finnhub key, the detail window adds P/E, EPS, dividend yield, beta, the next earnings
   date, industry, country, the company logo and a website link, and the key shows an amber **E**
   in the week before an earnings report.

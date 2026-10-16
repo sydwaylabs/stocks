@@ -73,7 +73,14 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 
 /* detail */
 .name-row { display: flex; align-items: center; gap: 8px; margin: 0 0 2px; min-width: 0; }
-.logo { width: 20px; height: 20px; border-radius: 4px; background: #fff; object-fit: contain; flex: 0 0 auto; }
+/* The header leads with the company's mark, app-icon sized: its logo when Finnhub has one,
+   otherwise its initial on a neutral tile, so every symbol gets the same header. */
+.hero { display: flex; align-items: center; gap: 16px; }
+.hero-text { flex: 1; min-width: 0; }
+.mark { position: relative; width: 76px; height: 76px; flex: 0 0 auto; border-radius: 18px; overflow: hidden;
+  background: linear-gradient(160deg, #4a4a50, #2c2c30); box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset, 0 4px 14px rgba(0,0,0,.35); }
+.mark img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.mono { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 700; color: var(--fg); letter-spacing: -0.02em; }
 .name { color: var(--fg-dim); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .company { color: var(--fg-faint); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .name-row .spacer { flex: 1; }
@@ -146,15 +153,19 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 </div>
 
 <main id="detail" hidden>
-  <div class="name-row">
-    <img class="logo" id="d-logo" alt="" hidden>
-    <p class="name" id="d-name"></p>
-    <span class="company" id="d-company"></span>
-    <span class="spacer"></span>
-    <button class="link" id="d-web" hidden>Website</button>
+  <div class="hero">
+    <div class="mark" aria-hidden="true"><span class="mono" id="d-mono"></span><img id="d-logo" alt="" hidden></div>
+    <div class="hero-text">
+      <div class="name-row">
+        <p class="name" id="d-name"></p>
+        <span class="company" id="d-company"></span>
+        <span class="spacer"></span>
+        <button class="link" id="d-web" hidden>Website</button>
+      </div>
+      <div class="price-row"><span class="price" id="d-price"></span><span class="ccy" id="d-ccy"></span></div>
+      <div class="move" id="d-move"></div>
+    </div>
   </div>
-  <div class="price-row"><span class="price" id="d-price"></span><span class="ccy" id="d-ccy"></span></div>
-  <div class="move" id="d-move"></div>
   <div class="chart-head">
     <div class="seg" id="ranges" role="tablist" aria-label="Chart range">
       <button data-range="1d" class="on" role="tab">1D</button><button data-range="5d" role="tab">5D</button><button data-range="1mo" role="tab">1M</button><button data-range="6mo" role="tab">6M</button><button data-range="ytd" role="tab">YTD</button><button data-range="1y" role="tab">1Y</button>
@@ -302,6 +313,12 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     }).catch(function () { showDetailError("The plugin is not responding."); });
   }
 
+  /* "Apple Inc." → "A", "S&P/TSX Composite index" → "S", "^GSPTSE" → "G". */
+  function initialOf(name, sym) {
+    var m = String(name || sym || "").match(/[A-Za-z0-9]/);
+    return m ? m[0].toUpperCase() : "·";
+  }
+
   function showDetailError(message) {
     $("detail").hidden = true;
     var box = $("d-error");
@@ -332,11 +349,13 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       rows.append(item);
     });
 
+    /* The initial sits under the logo, so a logo that fails or is slow still leaves a mark. */
+    $("d-mono").textContent = initialOf(d.name, d.symbol);
     var logo = $("d-logo");
-    if (d.logo && logo.getAttribute("src") !== d.logo) logo.setAttribute("src", d.logo);
-    logo.hidden = !d.logo;
-    logo.onerror = function () { logo.hidden = true; fit(); };
-    logo.onload = fit;
+    if (d.logo && logo.getAttribute("src") !== d.logo) { logo.hidden = true; logo.setAttribute("src", d.logo); }
+    if (!d.logo) { logo.hidden = true; logo.removeAttribute("src"); }
+    logo.onload = function () { logo.hidden = false; };
+    logo.onerror = function () { logo.hidden = true; };
     website = d.website || "";
     $("d-company").textContent = d.company ? "· " + d.company : "";
     $("d-web").hidden = !website;
