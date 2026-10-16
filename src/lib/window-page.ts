@@ -115,12 +115,11 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .yaxis { position: relative; min-width: 24px; box-sizing: content-box; padding: 0 9px 0 8px; border-left: 1px solid var(--line); }
 .ytick { position: absolute; left: 8px; transform: translateY(-50%); color: var(--fg-faint); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .chart svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
-/* A new range or symbol draws its line in from the left; the 30-second refresh does not.
-   The grid stays put underneath, so only the data moves. */
-@keyframes reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+/* A new range or symbol fades in, quickly enough that the chart reads at once — a sweep that drew
+   the line in was tried and held back the newest prices. The grid stays put underneath, and the
+   30-second refresh does not animate at all. */
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-.chart svg.reveal { animation: reveal 450ms cubic-bezier(.2, .7, .2, 1); }
-.axis.fade, .yaxis.fade { animation: fade-in 250ms ease-out; }
+.chart svg.reveal, .axis.fade, .yaxis.fade { animation: fade-in 150ms ease-out; }
 @media (prefers-reduced-motion: reduce) {
   .chart svg.reveal, .axis.fade, .yaxis.fade { animation: none; }
 }
