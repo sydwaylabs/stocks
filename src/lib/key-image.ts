@@ -216,20 +216,23 @@ export function renderKey(view: KeyView): string {
       // With dots on the bottom edge, everything moves up and the sparkline gives a little height.
       const dotted = hasDots(view.dots);
       const L = dotted
-        ? { symbol: 30, price: 64, spark: { y: 73, h: 21 }, move: 117, big: 70, bigSpark: { y: 84, h: 28 } }
+        ? { symbol: 31, price: 64, spark: { y: 74, h: 21 }, move: 117, big: 68, bigSpark: { y: 82, h: 28 } }
         : { symbol: 34, price: 72, spark: { y: 84, h: 26 }, move: 136, big: 80, bigSpark: { y: 96, h: 32 } };
-      parts.push(text(mid, L.symbol, sym.size, fade(FG), sym.text));
+      // A Watchlist key holds a row of dots as well, so its text steps down about a seventh to keep
+      // the same breathing room as a Ticker key; same size, it read as larger beside one.
+      const scale = dotted ? 0.86 : 1;
+      parts.push(text(mid, L.symbol, Math.round(sym.size * scale), fade(FG), sym.text));
       if (view.earningsSoon) parts.push(earningsBadge(fade(EARNINGS)));
 
       const move = view.changeAs === "amount" ? formatChangeShort(view.change, view.currency) : formatPct(view.changePct);
       if (view.display === "change" && move) {
-        parts.push(text(mid, L.big, numberFont(move), colour, move));
+        parts.push(text(mid, L.big, Math.round(numberFont(move) * scale), colour, move));
         parts.push(sparkline(view.points ?? [], view.prevClose, mixHex(BG, colour, 0.6), { x: 14, ...L.bigSpark, w: 116 }));
       } else {
         const price = formatPrice(view.price);
-        parts.push(text(mid, L.price, numberFont(price), fade(FG), price));
+        parts.push(text(mid, L.price, Math.round(numberFont(price) * (dotted ? 0.9 : 1)), fade(FG), price));
         parts.push(sparkline(view.points ?? [], view.prevClose, mixHex(BG, colour, 0.5), { x: 14, ...L.spark, w: 116 }));
-        if (move) parts.push(text(mid, L.move, move.length > 8 ? 18 : dotted ? 20 : 22, colour, move));
+        if (move) parts.push(text(mid, L.move, move.length > 8 ? 18 : dotted ? 19 : 22, colour, move));
       }
       parts.push(dotsRow(view.dots));
       break;
