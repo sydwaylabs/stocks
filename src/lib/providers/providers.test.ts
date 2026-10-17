@@ -53,6 +53,14 @@ describe("yahoo chart", () => {
     expect(parseChart(multiDay, "X").series.session).toBeUndefined();
   });
 
+  it("works out the % from its own change, so the two never disagree in sign", () => {
+    for (const name of ["yahoo-chart-aapl.json", "yahoo-chart-btc.json"]) {
+      const { quote } = parseChart(fixture(name), "X");
+      expect(quote.changePct).toBeCloseTo((quote.change! / quote.prevClose!) * 100, 9);
+      expect(Math.sign(quote.changePct!)).toBe(Math.sign(quote.change!));
+    }
+  });
+
   it("parses crypto", () => {
     const { quote, details } = parseChart(fixture("yahoo-chart-btc.json"), "BTC-USD");
     expect(quote.name).toBe("Bitcoin USD");

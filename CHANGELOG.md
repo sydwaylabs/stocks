@@ -27,6 +27,9 @@ notes and the Marketplace "what's new" text are generated from this file.
 
 ### Fixed
 
+- Crypto's change in % could disagree with its change in dollars — Bitcoin read -$58.71 beside
+  +0.51% — because Yahoo's percentage covers a different span. The % now comes from the same
+  change and close as the amount.
 - An index (the TSX Composite, the Dow) moves in points, not dollars: amounts read "+39.45 pts",
   and its level shows no currency.
 - A key whose window had been open while it was redrawn (switching folders, an alert firing)

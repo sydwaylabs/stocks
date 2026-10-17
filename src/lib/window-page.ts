@@ -161,7 +161,7 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-select: none; }
 .wrow:hover, .wrow.cursor { border-color: #6a6a70; }
 .wrow.open { border-color: #6a6a70; }
-.whead { display: grid; grid-template-columns: 30px minmax(0, 1fr) 76px 104px 100px; align-items: center; column-gap: 12px;
+.whead { display: grid; grid-template-columns: 30px minmax(0, 1fr) 76px 104px 88px; align-items: center; column-gap: 12px;
   height: 46px; padding: 0 12px; cursor: pointer; }
 .wmark { position: relative; width: 30px; height: 30px; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center;
   background: linear-gradient(160deg, #4a4a50, #2c2c30); font-size: 14px; font-weight: 700; color: var(--fg);
@@ -180,9 +180,11 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 /* Every pill the column's full width, the figure right-aligned in it, so the column reads as one
    and the digits line up down the board whatever their length. */
 .wmove { justify-self: stretch; box-sizing: border-box; text-align: right; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
-  padding: 3px 8px; border-radius: 6px; background: var(--kbd); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wmove.up { background: rgba(41,189,80,.16); }
-.wmove.down { background: rgba(239,75,75,.16); }
+  padding: 3px 7px; border-radius: 6px; background: #4a4a50; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Solid fills carrying the direction, white figures on them — as Stocks does. Muted a step from the
+   line colours so the column does not shout over the prices beside it. */
+.wmove.up { background: #1f9a42; color: #fff; }
+.wmove.down { background: #c9403f; color: #fff; }
 /* Clicking a pill switches every row between % and the amount, as Stocks on iPhone does. */
 .wmove { cursor: pointer; border: 1px solid transparent; position: relative; }
 .wmove:hover { border-color: rgba(255,255,255,.18); }

@@ -30,9 +30,10 @@ export function parseChart(body: unknown, symbol: string): ChartResult {
 
   const prevClose = num(meta.previousClose) ?? num(meta.chartPreviousClose);
   const change = prevClose !== undefined ? price - prevClose : undefined;
+  // From our own change and close, not Yahoo's regularMarketChangePercent: for crypto that is over
+  // a different span, and Bitcoin read -$58.71 beside +0.51%. Worked out here, the two always agree.
   const changePct =
-    num(meta.regularMarketChangePercent) ??
-    (change !== undefined && prevClose ? (change / prevClose) * 100 : undefined);
+    change !== undefined && prevClose ? (change / prevClose) * 100 : num(meta.regularMarketChangePercent);
   const marketTime = num(meta.regularMarketTime);
 
   const closes = result?.indicators?.quote?.[0]?.close ?? [];
