@@ -69,18 +69,21 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
     const settings = mergeWatchlist(saved);
     if (!WATCHLIST_EDITABLE.every((key) => key in saved)) await ev.action.setSettings(settings);
 
+    // One record per key for its whole life, updated in place. The window's close handler and the
+    // ticks hold on to the record they started with; a fresh one here left them writing to a
+    // record nobody read, and a closed window stayed "open" forever, so a hold did nothing.
     const existing = this.instances.get(ev.action.id);
     const list = parseSymbols(settings.symbols);
-    const instance: Instance = {
+    const instance: Instance = existing ?? {
+      action: ev.action, settings, list, index: 0, keyDownAt: null, pausedUntil: 0, snaps: new Map(), closeWindow: null,
+    };
+    Object.assign(instance, {
       action: ev.action,
       settings,
       list,
-      index: existing ? Math.min(existing.index, Math.max(0, list.length - 1)) : 0,
+      index: Math.min(instance.index, Math.max(0, list.length - 1)),
       keyDownAt: null,
-      pausedUntil: 0,
-      snaps: existing?.snaps ?? new Map(),
-      closeWindow: existing?.closeWindow ?? null,
-    };
+    });
     this.instances.set(ev.action.id, instance);
     this.schedule(ev.action.id);
     await this.show(instance);

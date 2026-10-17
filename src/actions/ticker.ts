@@ -67,16 +67,21 @@ export class Ticker extends SingletonAction<TickerSettings> {
 
     // willAppear fires on every folder and profile change. Keep what the key already knew, so
     // walking through folders redraws from memory instead of re-fetching.
+    // One record per key for its whole life, updated in place. The window's close handler and the
+    // ticks hold on to the record they started with; a fresh one here left them writing to a
+    // record nobody read, and a closed window stayed "open" forever, so a hold did nothing.
     const existing = this.instances.get(ev.action.id);
-    const instance: KeyInstance = {
+    const same = !!existing && existing.settings.symbol === settings.symbol;
+    const instance: KeyInstance = existing ?? {
+      action: ev.action, settings, keyDownAt: null, last: null, earningsSoon: false, closeWindow: null, generation: 0,
+    };
+    Object.assign(instance, {
       action: ev.action,
       settings,
       keyDownAt: null,
-      last: existing && existing.settings.symbol === settings.symbol ? existing.last : null,
-      earningsSoon: existing && existing.settings.symbol === settings.symbol ? existing.earningsSoon : false,
-      closeWindow: existing?.closeWindow ?? null,
-      generation: existing?.generation ?? 0,
-    };
+      last: same ? instance.last : null,
+      earningsSoon: same ? instance.earningsSoon : false,
+    });
     this.instances.set(ev.action.id, instance);
     this.schedule(ev.action.id);
 

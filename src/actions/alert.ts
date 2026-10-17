@@ -71,18 +71,15 @@ export class PriceAlert extends SingletonAction<AlertSettings> {
     const settings = mergeAlert(saved);
     if (!ALERT_EDITABLE.every((key) => key in saved)) await ev.action.setSettings(settings);
 
+    // One record per key for its whole life, updated in place. The window's close handler and the
+    // ticks hold on to the record they started with; a fresh one here left them writing to a
+    // record nobody read, and a closed window stayed "open" forever, so a hold did nothing.
     const existing = this.instances.get(ev.action.id);
-    const same = existing && existing.settings.symbol === settings.symbol;
-    const instance: Instance = {
-      action: ev.action,
-      settings,
-      keyDownAt: null,
-      reading: same ? existing.reading : null,
-      visible: true,
-      pulse: existing?.pulse ?? true,
-      closeWindow: existing?.closeWindow ?? null,
-      generation: existing?.generation ?? 0,
+    const same = !!existing && existing.settings.symbol === settings.symbol;
+    const instance: Instance = existing ?? {
+      action: ev.action, settings, keyDownAt: null, reading: null, visible: true, pulse: true, closeWindow: null, generation: 0,
     };
+    Object.assign(instance, { action: ev.action, settings, keyDownAt: null, reading: same ? instance.reading : null, visible: true });
     this.instances.set(ev.action.id, instance);
     this.watch(ev.action.id);
     this.syncPulse(ev.action.id);
@@ -191,6 +188,8 @@ export class PriceAlert extends SingletonAction<AlertSettings> {
           if (next === "fired") streamDeck.logger.info(`alert ${symbol}: ${describeCondition(condition, target)} at ${snap.quote.price}`);
           await this.setPhase(instance, next);
           this.syncPulse(id);
+          // Folder open or not: the window is how an alert is seen when the key is out of view.
+          if (next === "fired" && instance.settings.popup) this.openWindow(id, undefined, { unbidden: true });
         }
       }
       await this.draw(instance);
@@ -284,7 +283,7 @@ export class PriceAlert extends SingletonAction<AlertSettings> {
 
   // ---- the window ----
 
-  private openWindow(id: string, startIn?: "search"): void {
+  private openWindow(id: string, startIn?: "search", options: { unbidden?: boolean } = {}): void {
     const instance = this.instances.get(id);
     if (!instance || instance.closeWindow) return;
     instance.closeWindow = () => { /* replaced once the window is up */ };
@@ -292,6 +291,7 @@ export class PriceAlert extends SingletonAction<AlertSettings> {
       quotes,
       symbol: () => instance.settings.symbol,
       startIn,
+      unbidden: options.unbidden,
       // The window edits the same rule as the inspector: set it, clear a fired one, read it back.
       alert: {
         get: () => alertView(instance.settings, instance.reading),

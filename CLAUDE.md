@@ -38,7 +38,11 @@ Finnhub key handling through `src/services.ts`, and one inspector script (`ui/st
   a 0.5% re-arm margin). Tap clears a fired alert, otherwise checks now. Its watch ticker keeps
   running after `willDisappear` (only the pulse and window stop); the phase is saved in settings.
   Known gap: after a restart Stream Deck reports only visible keys, so a hidden alert resumes when
-  its folder is opened.
+  its folder is opened. With `popup` on (default) a firing opens the window `unbidden`, i.e. with
+  `--no-focus`, so it never takes the keyboard.
+- **One record per key**: every action's `onWillAppear` updates the existing instance in place.
+  Replacing it once left the window's `finally` clearing `closeWindow` on a dead record, and the key
+  ignored holds forever after.
 
 Every action: hold opens the window, and an empty key opens search on any press.
 

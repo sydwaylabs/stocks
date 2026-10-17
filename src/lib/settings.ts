@@ -45,16 +45,18 @@ export type AlertSettings = {
   condition?: Condition;
   /** A price for above/below, a percentage for the % moves. Arrives as a string. */
   target?: number;
+  /** Open the window when the alert fires, as well as turning the key amber. */
+  popup?: boolean;
   /** Persisted so a fired alert is still fired after a restart. */
   phase?: Phase;
   firedAt?: number | null;
   firedPrice?: number | null;
 };
 
-export const ALERT_EDITABLE = ["symbol", "condition", "target"] as const;
+export const ALERT_EDITABLE = ["symbol", "condition", "target", "popup"] as const;
 
 const ALERT_DEFAULTS: Required<AlertSettings> = {
-  symbol: "", name: "", condition: "above", target: 0, phase: "armed", firedAt: null, firedPrice: null,
+  symbol: "", name: "", condition: "above", target: 0, popup: true, phase: "armed", firedAt: null, firedPrice: null,
 };
 
 export function mergeAlert(saved: Partial<AlertSettings> | undefined): Required<AlertSettings> {
@@ -65,6 +67,8 @@ export function mergeAlert(saved: Partial<AlertSettings> | undefined): Required<
     name: typeof base.name === "string" ? base.name : "",
     condition: CONDITIONS.includes(base.condition) ? base.condition : "above",
     target: Number.isFinite(target) && target > 0 ? target : 0,
+    // sdpi-checkbox saves a boolean; anything else from an older version reads as its default.
+    popup: base.popup === false || base.popup === ("false" as unknown) ? false : true,
     phase: base.phase === "fired" || base.phase === "cleared" ? base.phase : "armed",
     firedAt: typeof base.firedAt === "number" ? base.firedAt : null,
     firedPrice: typeof base.firedPrice === "number" ? base.firedPrice : null,

@@ -53,6 +53,11 @@ export type StockWindowOptions = {
     changeAs: () => "percent" | "amount";
     setChangeAs: (value: "percent" | "amount") => Promise<void>;
   };
+  /**
+   * Opened by the plugin, not by a press — an alert firing. Shown without taking key status, so it
+   * cannot swallow what someone is typing in another app (references/native-window.md).
+   */
+  unbidden?: boolean;
   /** A Price Alert's window: its rule, shown and edited beside the chart. */
   alert?: {
     get: () => AlertView;
@@ -204,6 +209,7 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
           canChange: options.canChange,
           alert: !!options.alert,
         }),
+        hostArgs: options.unbidden ? ["--no-focus"] : undefined,
         onMessage,
         onOpen: options.onOpen,
         onWarn: (text) => streamDeck.logger.warn(text),

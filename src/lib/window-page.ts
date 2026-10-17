@@ -573,10 +573,14 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       var head = el("div", "whead");
       head.setAttribute("role", "button");
       head.setAttribute("aria-expanded", "false");
-      head.addEventListener("pointerdown", function (e) { beginDrag(e, boardCards.indexOf(c)); });
+      /* By symbol, not by the card object: a refresh replaces the objects but keeps the row. */
+      var at = function () { return boardCards.findIndex(function (x) { return x.symbol === c.symbol; }); };
+      head.addEventListener("pointerdown", function (e) { var i = at(); if (i >= 0) beginDrag(e, i); });
       head.addEventListener("click", function () {
         if (swallowClick) return;
-        cursor = boardCards.indexOf(c);
+        var i = at();
+        if (i < 0) return;
+        cursor = i;
         toggleRow(c.symbol);
       });
       fillHead(head, c);

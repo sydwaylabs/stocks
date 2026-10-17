@@ -40,6 +40,12 @@ describe("mergeAlert", () => {
     expect(mergeAlert({ target: "abc" as unknown as number }).target).toBe(0);
   });
 
+  it("pops up on firing unless turned off", () => {
+    expect(mergeAlert({}).popup).toBe(true);
+    expect(mergeAlert({ popup: false }).popup).toBe(false);
+    expect(mergeAlert({ popup: "false" as unknown as boolean }).popup).toBe(false);
+  });
+
   it("keeps only known conditions and phases", () => {
     expect(mergeAlert({ condition: "sideways" as "above" }).condition).toBe("above");
     expect(mergeAlert({ phase: "fired" }).phase).toBe("fired");
