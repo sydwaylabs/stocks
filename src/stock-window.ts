@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { buildChart } from "./lib/chart-data.js";
-import { buildBoardCard, buildDetail, SearchSession, typeLabel, type BoardCard } from "./lib/detail-data.js";
+import { BOARD_SORTS, buildBoardCard, buildDetail, SearchSession, sortCards, typeLabel, type BoardCard, type BoardSort } from "./lib/detail-data.js";
 import { LogoCache } from "./lib/logo-cache.js";
 import { CHART_RANGES, ProviderError, type ChartRange, type SearchResult } from "./lib/providers/types.js";
 import { CONDITIONS, type AlertView, type Condition } from "./lib/alert.js";
@@ -54,6 +54,9 @@ export type StockWindowOptions = {
     /** The key's "Change as" setting, which the board's pills follow and can switch. */
     changeAs: () => "percent" | "amount";
     setChangeAs: (value: "percent" | "amount") => Promise<void>;
+    /** The board's sort, remembered by the key. A view only: the list keeps its order. */
+    sort: () => BoardSort;
+    setSort: (value: BoardSort) => Promise<void>;
   };
   /**
    * Opened by the plugin, not by a press — an alert firing. Shown without taking key status, so it
@@ -113,7 +116,7 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
             return { symbol, name: symbol, trend: "flat", points: [], error: notFound ? "Not found" : "No data" };
           }
         }));
-        return { cards, onKey: options.symbol(), max: 12, changeAs: board.changeAs() };
+        return { cards: sortCards(cards, board.sort()), onKey: options.symbol(), max: 12, changeAs: board.changeAs(), sort: board.sort() };
       }
       case "focus": {
         if (!board || typeof message.symbol !== "string" || !board.list().includes(message.symbol)) return { ok: false };
@@ -142,6 +145,11 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         return options.alert ? { alert: await options.alert.remove() } : {};
       case "clearAlert":
         return options.alert ? { alert: await options.alert.clear() } : {};
+      case "sort": {
+        if (!board || !BOARD_SORTS.includes(message.value as BoardSort)) return { ok: false };
+        await board.setSort(message.value as BoardSort);
+        return { ok: true };
+      }
       case "changeAs": {
         if (!board || (message.value !== "percent" && message.value !== "amount")) return { ok: false };
         await board.setChangeAs(message.value);

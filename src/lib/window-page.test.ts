@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildBoardCard, buildDetail, formatEarnings, SearchSession, thin, typeLabel } from "./detail-data.js";
+import { buildBoardCard, buildDetail, formatEarnings, SearchSession, sortCards, thin, typeLabel, type BoardCard } from "./detail-data.js";
 import type { Snapshot } from "./quotes.js";
 import { renderPage, scriptJson } from "./window-page.js";
 
@@ -121,6 +121,16 @@ describe("board cards", () => {
     });
     expect(card.changeAmount).toBe("+39.45");
     expect(card.currency).toBeUndefined();
+  });
+
+  it("sorts the board by change, name or price, failed rows last, leaving my order alone", () => {
+    const c = (symbol: string, pct?: number, price?: number, error?: string): BoardCard =>
+      ({ symbol, name: symbol, trend: "flat", points: [], sortPct: pct, sortPrice: price, error });
+    const cards = [c("MSFT", -1.9, 529), c("AAPL", 0.4, 343), c("ZZZ", undefined, undefined, "Not found"), c("TSLA", -2.2, 354)];
+    expect(sortCards(cards, "custom").map((x) => x.symbol)).toEqual(["MSFT", "AAPL", "ZZZ", "TSLA"]);
+    expect(sortCards(cards, "change").map((x) => x.symbol)).toEqual(["AAPL", "MSFT", "TSLA", "ZZZ"]);
+    expect(sortCards(cards, "name").map((x) => x.symbol)).toEqual(["AAPL", "MSFT", "TSLA", "ZZZ"]);
+    expect(sortCards(cards, "price").map((x) => x.symbol)).toEqual(["MSFT", "TSLA", "AAPL", "ZZZ"]);
   });
 
   it("thins only long series", () => {

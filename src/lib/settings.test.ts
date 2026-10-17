@@ -63,8 +63,10 @@ describe("watchlist settings", () => {
 
   it("normalises the stored text and clamps rotation to the choices", () => {
     expect(mergeWatchlist({ symbols: "aapl msft", rotateSec: "10" as unknown as number })).toEqual({
-      symbols: "AAPL, MSFT", rotateSec: 10, display: "price", changeAs: "percent", pinWindow: false,
+      symbols: "AAPL, MSFT", rotateSec: 10, display: "price", changeAs: "percent", pinWindow: false, boardSort: "custom",
     });
+    expect(mergeWatchlist({ boardSort: "change" }).boardSort).toBe("change");
+    expect(mergeWatchlist({ boardSort: "volume" as "name" }).boardSort).toBe("custom");
     expect(mergeWatchlist({ rotateSec: 7 }).rotateSec).toBe(0);
   });
 

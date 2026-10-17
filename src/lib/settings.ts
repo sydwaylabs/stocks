@@ -90,6 +90,8 @@ export type WatchlistSettings = {
   display?: "price" | "change";
   changeAs?: "percent" | "amount";
   pinWindow?: boolean;
+  /** How the board orders its rows. Only a view: the list, and the key's rotation, keep their order. */
+  boardSort?: "custom" | "change" | "name" | "price";
 };
 
 export const WATCHLIST_EDITABLE = ["symbols", "rotateSec", "display", "changeAs"] as const;
@@ -97,7 +99,7 @@ export const ROTATE_CHOICES = [0, 5, 10, 30] as const;
 export const WATCHLIST_MAX = 12;
 
 export function mergeWatchlist(saved: Partial<WatchlistSettings> | undefined): Required<WatchlistSettings> {
-  const base = { symbols: "", rotateSec: 0, display: "price", changeAs: "percent", pinWindow: false, ...saved };
+  const base = { symbols: "", rotateSec: 0, display: "price", changeAs: "percent", pinWindow: false, boardSort: "custom", ...saved };
   const rotate = Number(base.rotateSec);
   return {
     symbols: parseSymbols(typeof base.symbols === "string" ? base.symbols : "").join(", "),
@@ -105,6 +107,7 @@ export function mergeWatchlist(saved: Partial<WatchlistSettings> | undefined): R
     display: base.display === "change" ? "change" : "price",
     changeAs: base.changeAs === "amount" ? "amount" : "percent",
     pinWindow: base.pinWindow === true,
+    boardSort: (["change", "name", "price"] as const).find((s) => s === base.boardSort) ?? "custom",
   };
 }
 

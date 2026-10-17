@@ -277,7 +277,15 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .pop-note.bad { color: var(--slow); }
 .iconbtn.on { background: var(--kbd); color: var(--fg); }
 /* Pinned: pressed in, in white rather than Quick Clips' green, which here would read as "up". */
-#pin.on { background: #4a4a50; border-color: #6a6a70; color: #fff; }
+#pin.on, #sort.on { background: #4a4a50; border-color: #6a6a70; color: #fff; }
+/* The sort menu: the add popover's frame, a short list with a tick on the current choice. */
+.popover.menu { width: 210px; padding: 6px; }
+.menu-item { display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; text-align: left;
+  font-size: 12.5px; padding: 6px 8px; border: 0; border-radius: 6px; background: none; color: var(--fg); cursor: pointer; }
+.menu-item:hover { background: var(--hover); }
+/* "mtick", not "tick": that is the chart axis's label class, absolutely placed. */
+.menu-item .mtick { width: 12px; flex: none; color: var(--fg); }
+.menu-item .sub { margin-left: auto; color: var(--fg-faint); font-size: 11px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 #refresh.spinning svg { animation: spin .8s linear infinite; }
 @media (prefers-reduced-motion: reduce) { #refresh.spinning svg { animation: none; opacity: .5; } }
@@ -312,6 +320,7 @@ ${TIP_CSS}
   <span class="spacer"></span>
   <!-- In the corner where + is on the board: one place, its job set by the view. -->
   <!-- Refresh and pin, on the views that show prices; then the view's own button. -->
+  <button id="sort" class="iconbtn" aria-label="Sort" aria-haspopup="menu" data-hint="Sort" hidden></button>
   <button id="refresh" class="iconbtn" aria-label="Refresh" data-hint="Refresh now" hidden></button>
   <button id="pin" class="iconbtn" aria-label="Pin open" aria-pressed="false" data-hint="Keep this window open" hidden></button>
   <button id="back" class="iconbtn" aria-label="Back to watchlist" data-hint="Back to watchlist" hidden></button>
@@ -322,6 +331,7 @@ ${TIP_CSS}
 </div>
 
 <main id="board" hidden><div class="wl" id="cards"></div></main>
+<div class="popover menu" id="sort-sheet" role="menu" aria-label="Sort" hidden></div>
 <div class="popover" id="add-sheet" role="dialog" aria-label="Add symbol" hidden>
   <div class="title" id="pop-title">Add symbol</div>
   <input id="add-q" type="text" placeholder="Company, fund, ETF or crypto" autocomplete="off" spellcheck="false" aria-label="Search">
@@ -480,8 +490,10 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
         view.style.flex = "";
       }
       /* An open popover floats over the board; the window grows only if it would run off the bottom. */
-      var pop = $("add-sheet");
-      if (!pop.hidden) height = Math.max(height, pop.offsetTop + pop.offsetHeight + 12);
+      ["add-sheet", "sort-sheet"].forEach(function (id) {
+        var pop = $(id);
+        if (!pop.hidden) height = Math.max(height, pop.offsetTop + pop.offsetHeight + 12);
+      });
       if (window.__nativeHost) {
         try { window.webkit.messageHandlers.resize.postMessage({ height: height }); } catch (e) { /* older host */ }
       } else {
@@ -500,11 +512,12 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     /* A board's views lead back to it; its own view offers Add. */
     $("back").hidden = !onBoard || next === "board";
     $("refresh").hidden = next === "search";
+    $("sort").hidden = next !== "board";
     $("pin").hidden = next === "search";
     $("add").hidden = !onBoard || next !== "board";
     clearInterval(poll);
     if (next === "board") {
-      setFooter([["↑↓", "move"], ["⌥↑↓", "reorder"], ["↵", "open"], ["c", "% / $"], ["1–6", "range"], ["a", "add"], ["esc", "close"]]);
+      setFooter(boardFooter());
       loadBoard();
       poll = setInterval(function () { loadBoard(); if (openSym) loadDetail(); }, 30000);
     } else if (next === "search") {
@@ -583,6 +596,77 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     return svg;
   }
 
+  /* ---- the board's sort ---- */
+
+  var boardSort = "custom";
+  var SORTS = [
+    ["custom", "My order", "drag to arrange"],
+    ["change", "Today's change", "% · gains first"],
+    ["name", "Name", "A–Z"],
+    ["price", "Price", "high first"],
+  ];
+
+  function boardFooter() {
+    return boardSort === "custom"
+      ? [["↑↓", "move"], ["⌥↑↓", "reorder"], ["↵", "open"], ["c", "% / $"], ["1–6", "range"], ["a", "add"], ["esc", "close"]]
+      : [["↑↓", "move"], ["↵", "open"], ["c", "% / $"], ["1–6", "range"], ["a", "add"], ["esc", "close"]];
+  }
+
+  function paintSort() {
+    var b = $("sort");
+    var current = SORTS.find(function (x) { return x[0] === boardSort; }) || SORTS[0];
+    /* Pressed in while the board is sorted, so a reordered list never looks like your own order. */
+    b.classList.toggle("on", boardSort !== "custom");
+    b.dataset.hint = boardSort === "custom" ? "Sort" : "Sorted by " + current[1].toLowerCase();
+    if (mode === "board") setFooter(boardFooter());
+  }
+
+  function toggleSort() {
+    var pop = $("sort-sheet");
+    if (!pop.hidden) { closeSort(); return; }
+    closeAdd();
+    pop.replaceChildren();
+    SORTS.forEach(function (x) {
+      var item = el("button", "menu-item");
+      item.setAttribute("role", "menuitemradio");
+      item.setAttribute("aria-checked", String(x[0] === boardSort));
+      item.append(el("span", "mtick", x[0] === boardSort ? "✓" : ""), el("span", "", x[1]), el("span", "sub", x[2]));
+      item.addEventListener("click", function () {
+        closeSort();
+        if (x[0] === boardSort) return;
+        boardSort = x[0];
+        paintSort();
+        post("sort", { value: boardSort }).then(function () { loadBoard(); });
+      });
+      pop.append(item);
+    });
+    var b = $("sort").getBoundingClientRect();
+    pop.style.top = (b.bottom + 9) + "px";
+    pop.style.right = Math.max(8, window.innerWidth - b.right) + "px";
+    pop.style.setProperty("--arrow", Math.max(8, b.width / 2 - 7) + "px");
+    pop.hidden = false;
+    fit();
+  }
+
+  function closeSort() {
+    $("sort-sheet").hidden = true;
+    fit();
+  }
+
+  document.addEventListener("pointerdown", function (e) {
+    if ($("sort-sheet").hidden) return;
+    if ($("sort-sheet").contains(e.target) || $("sort").contains(e.target)) return;
+    closeSort();
+  });
+
+  /* Lucide arrow-down-up (ISC). */
+  function sortIcon() {
+    var svg = svgEl("svg", { viewBox: "0 0 24 24", width: 15, height: 15, fill: "none", stroke: "currentColor",
+      "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
+    svg.append(svgEl("path", { d: "m3 16 4 4 4-4" }), svgEl("path", { d: "M7 20V4" }), svgEl("path", { d: "m21 8-4-4-4 4" }), svgEl("path", { d: "M17 4v16" }));
+    return svg;
+  }
+
   /* ---- board ---- */
 
   /*
@@ -607,6 +691,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       boardCards = (reply && reply.cards) || [];
       boardOnKey = (reply && reply.onKey) || "";
       if (reply && reply.changeAs) changeAs = reply.changeAs;
+      if (reply && reply.sort) { boardSort = reply.sort; paintSort(); }
       $("chip").textContent = "Watchlist · " + boardCards.length + " of " + ((reply && reply.max) || 12);
       /* Every row starts closed; the keyboard's place starts on the row the key is showing, so
          Return opens what you were just looking at. */
@@ -876,6 +961,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     var pop = $("add-sheet");
     var opening = forceOpen || pop.hidden;
     if (anchor) popAnchor = anchor;
+    if (opening && !$("sort-sheet").hidden) closeSort();
     pop.hidden = !opening;
     $(popAnchor).classList.toggle("on", opening);
     if (opening) {
@@ -989,7 +1075,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   function rowList() { return boardCards.map(function (c) { return rowEls[c.symbol].row; }); }
 
   function beginDrag(e, i) {
-    if (e.button !== 0 || boardCards.length < 2) return;
+    /* Only your own order can be rearranged; a sorted view is the sort's to arrange. */
+    if (e.button !== 0 || boardCards.length < 2 || boardSort !== "custom") return;
     drag = { from: i, target: i, startY: e.clientY, active: false, row: rowEls[boardCards[i].symbol].row };
   }
 
@@ -1585,6 +1672,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     debounce = setTimeout(runSearch, 250);
   });
 
+  $("sort").append(sortIcon());
+  $("sort").addEventListener("click", function (e) { e.stopPropagation(); toggleSort(); });
   $("refresh").append(refreshIcon());
   $("refresh").addEventListener("click", refreshNow);
   $("pin").append(pinIcon());
@@ -1605,6 +1694,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   document.addEventListener("keydown", function (e) {
     /* An open popover takes Esc first, wherever the focus is. */
     if (e.key === "Escape" && addOpen()) { e.preventDefault(); closeAdd(); return; }
+    if (e.key === "Escape" && !$("sort-sheet").hidden) { e.preventDefault(); closeSort(); return; }
     /* Typing in the alert's form is typing: no single-key shortcuts while a field has the keys. */
     var t = e.target;
     var typing = t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA") && t.id !== "q";
@@ -1631,7 +1721,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       }
       return;
     }
-    if (mode === "board" && e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown") && boardCards.length > 1) {
+    if (mode === "board" && e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown") && boardCards.length > 1 && boardSort === "custom") {
       e.preventDefault();
       var to = cursor + (e.key === "ArrowDown" ? 1 : -1);
       if (to >= 0 && to < boardCards.length) { if (openSym) closeRow(); moveRow(cursor, to); }
