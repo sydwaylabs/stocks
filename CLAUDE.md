@@ -40,6 +40,10 @@ Finnhub key handling through `src/services.ts`, and one inspector script (`ui/st
   a drag starts so slots are even. `reorder` is accepted only as a permutation of the list.
   Search adds and stays open. Note: an offscreen WKWebView does not advance CSS animations, so a
   headless preview of a faded-in chart shows it blank — render with the window on screen.
+- **Watchlist on a dial** (`Controllers: Keypad, Encoder`): turn moves (any number of ticks,
+  wrapping), push and touch open the board — Timekeeper's world-clock mapping. The strip is one
+  pixmap, `canvas` in `layouts/watchlist.json`, drawn by `renderDial`. A changed layout file needs
+  the Stream Deck app quit and reopened, not just a plugin restart.
 - **Price Alert** (`.alert`): logic in `src/lib/alert.ts` (armed → fired → cleared → armed, with
   a 0.5% re-arm margin). Tap clears a fired alert, otherwise checks now. Its watch ticker keeps
   running after `willDisappear` (only the pulse and window stop); the phase is saved in settings.

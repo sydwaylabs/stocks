@@ -245,3 +245,61 @@ export function renderKey(view: KeyView): string {
 export function toDataUri(svg: string): string {
   return `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`;
 }
+
+/**
+ * A Stream Deck + touch strip segment for the same view, 200×100 drawn at 400×200. One pixmap for
+ * the whole face (references/key-images.md, "On a dial, draw the number yourself"): a layout's text
+ * items cannot choose a font, so the digits would slide about as they do on a key. Same Qt renderer
+ * as a key, so the same rules: solid hex, plain <text>, nothing clever.
+ */
+export const DIAL_W = 400;
+export const DIAL_H = 200;
+
+export function renderDial(view: KeyView): string {
+  const parts: string[] = [`<rect width="${DIAL_W}" height="${DIAL_H}" fill="${BG}"/>`];
+  const left = (x: number, y: number, size: number, fill: string, body: string, weight = 700) =>
+    `<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" fill="${fill}" font-family="-apple-system, Helvetica, sans-serif">${escapeXml(body)}</text>`;
+  const right = (x: number, y: number, size: number, fill: string, body: string, weight = 700) =>
+    `<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" fill="${fill}" text-anchor="end" font-family="-apple-system, Helvetica, sans-serif">${escapeXml(body)}</text>`;
+  const dots = (d: Dots | undefined) => {
+    if (!hasDots(d)) return "";
+    const gap = d.count > 8 ? 13 : 16;
+    const start = DIAL_W / 2 - ((d.count - 1) * gap) / 2;
+    return Array.from({ length: d.count }, (_, i) =>
+      `<circle cx="${start + i * gap}" cy="188" r="${i === d.active ? 4.5 : 3.5}" fill="${i === d.active ? FG : "#55555c"}"/>`
+    ).join("");
+  };
+
+  switch (view.kind) {
+    case "empty":
+      parts.push(left(28, 90, 34, FG, "Watchlist"), left(28, 136, 26, DIM, "Touch to add symbols", 600));
+      break;
+    case "loading":
+      parts.push(left(28, 56, 34, FG, view.symbol), left(28, 128, 40, DIM, "···"), dots(view.dots));
+      break;
+    case "error":
+      parts.push(left(28, 56, 34, FG, view.symbol), left(28, 120, 30, AMBER, view.message, 600), dots(view.dots));
+      break;
+    case "alert":
+      // Alerts live on keys; a dial never draws one, but the view type allows it.
+      parts.push(left(28, 56, 34, FG, view.symbol), left(28, 120, 30, AMBER, view.caption, 600));
+      break;
+    case "quote": {
+      const trend = trendOf(view.change ?? view.changePct);
+      const fade = (c: string) => (view.stale ? mixHex(BG, c, 0.45) : c);
+      const colour = fade(COLOURS[trend]);
+      const move = view.changeAs === "amount" ? formatChangeShort(view.change, view.currency) : formatPct(view.changePct);
+      const symbol = view.symbol.length > 10 ? `${view.symbol.slice(0, 9)}…` : view.symbol;
+      const price = formatPrice(view.price);
+      parts.push(
+        left(28, 52, 34, fade(FG), symbol),
+        right(DIAL_W - 28, 52, 30, colour, move),
+        left(28, 118, price.length > 7 ? 54 : 60, fade(FG), price),
+        sparkline(view.points ?? [], view.prevClose, mixHex(BG, colour, 0.55), { x: 28, y: 132, w: DIAL_W - 56, h: 38 }),
+        dots(view.dots),
+      );
+      break;
+    }
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${DIAL_W}" height="${DIAL_H}" viewBox="0 0 ${DIAL_W} ${DIAL_H}">${parts.join("")}</svg>`;
+}

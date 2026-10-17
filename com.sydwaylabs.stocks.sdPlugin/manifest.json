@@ -36,7 +36,8 @@
 			"Tooltip": "Several symbols on one key. Press for the next, hold for details. On an empty key, press to add symbols.",
 			"PropertyInspectorPath": "ui/watchlist.html",
 			"Controllers": [
-				"Keypad"
+				"Keypad",
+				"Encoder"
 			],
 			"States": [
 				{
@@ -46,7 +47,16 @@
 				}
 			],
 			"UserTitleEnabled": false,
-			"SupportedInMultiActions": false
+			"SupportedInMultiActions": false,
+			"Encoder": {
+				"Icon": "imgs/actions/watchlist/icon",
+				"layout": "layouts/watchlist.json",
+				"TriggerDescription": {
+					"Rotate": "Move between symbols",
+					"Push": "Open the board",
+					"Touch": "Open the board"
+				}
+			}
 		},
 		{
 			"Name": "Price Alert",

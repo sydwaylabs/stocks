@@ -1,15 +1,19 @@
 import streamDeck, {
   action,
   SingletonAction,
+  type DialAction,
+  type DialRotateEvent,
+  type DialUpEvent,
   type DidReceiveSettingsEvent,
   type KeyAction,
+  type TouchTapEvent,
   type KeyDownEvent,
   type KeyUpEvent,
   type WillAppearEvent,
   type WillDisappearEvent,
 } from "@elgato/streamdeck";
 
-import { renderKey, toDataUri, type KeyView } from "../lib/key-image.js";
+import { renderDial, renderKey, toDataUri, type KeyView } from "../lib/key-image.js";
 import { ProviderError } from "../lib/providers/types.js";
 import { addSymbol, mergeWatchlist, parseSymbols, WATCHLIST_EDITABLE, WATCHLIST_MAX, type WatchlistSettings } from "../lib/settings.js";
 import { unitOf, type Snapshot } from "../lib/quotes.js";
@@ -23,6 +27,9 @@ import { ticker } from "../tick.js";
  *   empty key, any press   → search window that adds to the list and stays open
  *   short press            → next symbol (and pauses auto-rotation for a minute)
  *   hold                   → the board: a card per symbol, each opening its detail
+ *
+ * On a Stream Deck + dial, as Timekeeper's world clock: turn to move through the list, push or
+ * touch the strip for the board. The strip is one drawn image (layouts/watchlist.json).
  *
  * The list is edited in the key's settings — typed, or added through search. Rotation, when it is
  * on, only runs while the key is on screen; a quote is fetched when its symbol comes round and
@@ -39,7 +46,8 @@ const REFRESH_MS = 5 * 60_000;
 type PluginMessageEvent = Parameters<NonNullable<SingletonAction<WatchlistSettings>["onSendToPlugin"]>>[0];
 
 type Instance = {
-  action: KeyAction<WatchlistSettings>;
+  /** A key or a dial: the same list, settings and board either way. */
+  action: KeyAction<WatchlistSettings> | DialAction<WatchlistSettings>;
   settings: Required<WatchlistSettings>;
   list: string[];
   index: number;
@@ -64,7 +72,7 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
   }
 
   override async onWillAppear(ev: WillAppearEvent<WatchlistSettings>): Promise<void> {
-    if (!ev.action.isKey()) return;
+    if (!ev.action.isKey() && !ev.action.isDial()) return;
     const saved = ev.payload.settings ?? {};
     const settings = mergeWatchlist(saved);
     if (!WATCHLIST_EDITABLE.every((key) => key in saved)) await ev.action.setSettings(settings);
@@ -109,6 +117,26 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
   override onKeyDown(ev: KeyDownEvent<WatchlistSettings>): void {
     const instance = this.instances.get(ev.action.id);
     if (instance) instance.keyDownAt = Date.now();
+  }
+
+  /** Turning moves through the list, a symbol per click, wrapping at both ends. */
+  override async onDialRotate(ev: DialRotateEvent<WatchlistSettings>): Promise<void> {
+    const instance = this.instances.get(ev.action.id);
+    if (!instance || ev.payload.ticks === 0 || instance.list.length === 0) return;
+    instance.pausedUntil = Date.now() + PRESS_PAUSE_MS;
+    await this.move(instance, ev.payload.ticks);
+  }
+
+  /** A push opens the board, or the add search on an empty list. */
+  override onDialUp(ev: DialUpEvent<WatchlistSettings>): void {
+    const instance = this.instances.get(ev.action.id);
+    if (instance) this.openWindow(ev.action.id, instance.list.length === 0 ? "add" : "detail");
+  }
+
+  /** Touching the strip does the same: there is nothing else on it to touch for. */
+  override onTouchTap(ev: TouchTapEvent<WatchlistSettings>): void {
+    const instance = this.instances.get(ev.action.id);
+    if (instance) this.openWindow(ev.action.id, instance.list.length === 0 ? "add" : "detail");
   }
 
   override async onKeyUp(ev: KeyUpEvent<WatchlistSettings>): Promise<void> {
@@ -165,7 +193,9 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
 
   private async move(instance: Instance, by: number): Promise<void> {
     if (instance.list.length === 0) return;
-    instance.index = (instance.index + by + instance.list.length) % instance.list.length;
+    // Modulo twice: a quick turn reports several clicks, and a big backwards one must still wrap.
+    const n = instance.list.length;
+    instance.index = (((instance.index + by) % n) + n) % n;
     await this.show(instance);
   }
 
@@ -213,7 +243,9 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
   }
 
   private async paint(instance: Instance, view: KeyView): Promise<void> {
-    await instance.action.setImage(toDataUri(renderKey(view)));
+    const surface = instance.action;
+    if (surface.isDial()) await surface.setFeedback({ canvas: toDataUri(renderDial(view)) });
+    else if (surface.isKey()) await surface.setImage(toDataUri(renderKey(view)));
   }
 
   // ---- the window ----

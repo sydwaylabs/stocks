@@ -12,6 +12,7 @@ A Stream Deck plugin by Sydway Labs, for macOS 12 or later and Stream Deck 6.9 o
 | **Ticker** (empty key) | Open search | Open search |
 | **Watchlist** | Next symbol (pauses auto-rotation for a minute) | The board: a row per symbol, one opening in place to its chart |
 | **Watchlist** (empty key) | Search, adding to the list | Search, adding to the list |
+| **Watchlist** on a Stream Deck + dial | Turn: next or previous symbol · Push or touch: the board | — |
 | **Price Alert** (fired) | Clear the alert | Detail window |
 | **Price Alert** (watching) | Check now | Detail window |
 | **Price Alert** (empty key) | Open search | Open search |

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { compact, formatChange, formatChangeShort, formatPct, formatPrice } from "./format.js";
-import { escapeXml, mixHex, numberFont, renderKey, sparkline, symbolFont } from "./key-image.js";
+import { escapeXml, mixHex, numberFont, renderDial, renderKey, sparkline, symbolFont } from "./key-image.js";
 
 describe("format", () => {
   it("keeps prices to eight characters or fewer", () => {
@@ -97,6 +97,23 @@ describe("key image", () => {
     expect((at(1, 4).match(/<circle/g) ?? []).length).toBe(4);
     expect(at(1, 4)).toContain('r="3.5"');
     expect(at(0, 1)).not.toContain("<circle");
+  });
+
+  it("draws a touch strip segment at 400×200 for each view, with no rgba", () => {
+    for (const view of [
+      { kind: "empty" as const },
+      { kind: "loading" as const, symbol: "AAPL", dots: { count: 3, active: 1 } },
+      { kind: "error" as const, symbol: "ZZZ", message: "Not found" },
+      { ...quote, dots: { count: 6, active: 2 } },
+    ]) {
+      const svg = renderDial(view);
+      expect(svg).toContain('viewBox="0 0 400 200"');
+      expect(svg).not.toMatch(/rgba\(/);
+    }
+    const strip = renderDial({ ...quote, dots: { count: 6, active: 2 } });
+    expect(strip).toContain("343.46");
+    expect(strip).toContain("+0.43%");
+    expect((strip.match(/<circle/g) ?? []).length).toBe(6);
   });
 
   it("colours by trend and dims when stale", () => {

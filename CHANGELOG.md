@@ -18,7 +18,8 @@ notes and the Marketplace "what's new" text are generated from this file.
   the board by today's change, name or price; your own order is kept, and the sort is remembered.
   Click a change to switch the whole board, and the key, between % and the amount. Optional
   rotation every 5, 10 or 30 seconds. Add symbols by typing them, or from the board's + search,
-  which stays open to add several.
+  which stays open to add several. On a Stream Deck + it works on a dial too: turn to move
+  through the list, push or touch the strip for the board.
 - **Price Alert**: turns its key amber, pulsing, when a symbol rises or falls to a price, moves a
   percentage today, or reaches a new 52-week high or low. Press to clear it; it watches again once
   the price moves back past the line, and keeps watching while its folder is closed. Set it in
