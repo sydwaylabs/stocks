@@ -209,6 +209,12 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .wpanel .stat { flex-direction: column; justify-content: flex-start; gap: 1px; padding: 6px 0; }
 .wpanel .stat dt { font-size: 11px; }
 .wpanel .stat dd { text-align: left; font-size: 12.5px; }
+/* A short set — an index, a coin, a stock without Finnhub's extras — has room to spare: two across,
+   label and value on one line, as the Ticker's window shows them. */
+.wpanel .stats.roomy { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
+.wpanel .stats.roomy .stat { flex-direction: row; justify-content: space-between; gap: 10px; }
+.wpanel .stats.roomy .stat dt { font-size: inherit; }
+.wpanel .stats.roomy .stat dd { text-align: right; font-size: inherit; }
 /* The source line shares the row's last line with its buttons: on the left, quiet, and clipped
    rather than wrapped if a long one meets them. */
 .wacts .meta { margin: 0 auto 0 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1026,6 +1032,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
 
     var rows = $("d-rows");
     rows.replaceChildren();
+    /* Four across only when there are enough figures to fill it. */
+    rows.className = d.rows.length <= ROOMY_MAX ? "stats roomy" : "stats";
     d.rows.forEach(function (r) {
       var item = el("div", "stat");
       var label = el("dt", "", r.label);
@@ -1066,6 +1074,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     return e;
   }
 
+  var ROOMY_MAX = 6;
   var RANGE_NAMES = { "1d": "today", "5d": "past 5 days", "1mo": "past month", "6mo": "past 6 months", ytd: "year to date", "1y": "past year" };
 
   function sameLocalDay(a, b) {
