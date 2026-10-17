@@ -20,7 +20,8 @@ notes and the Marketplace "what's new" text are generated from this file.
   to add several.
 - **Price Alert**: turns its key amber, pulsing, when a symbol rises or falls to a price, moves a
   percentage today, or reaches a new 52-week high or low. Press to clear it; it watches again once
-  the price moves back past the line, and keeps watching while its folder is closed.
+  the price moves back past the line, and keeps watching while its folder is closed. Set it in
+  the key's settings or in its window, where a click on the chart picks the price.
 
 - **Ticker** shows a live quote for any stock, ETF, fund, index or coin: price, today's change and
   a sparkline, refreshed every 1, 5 or 15 minutes. Quotes that are more than two refreshes old are
