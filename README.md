@@ -10,6 +10,23 @@ A Stream Deck plugin by Sydway Labs, for macOS 12 or later and Stream Deck 6.9 o
 |---|---|---|
 | **Ticker** (symbol set) | Refresh now | Open the detail window: a chart (1D, 5D, 1M, 6M, YTD, 1Y), day and 52-week ranges, volume, market cap, and **Change symbol** |
 | **Ticker** (empty key) | Open search | Open search |
+| **Watchlist** | Next symbol (pauses auto-rotation for a minute) | Detail window for the symbol showing |
+| **Watchlist** (empty key) | Search, adding to the list | Search, adding to the list |
+| **Price Alert** (fired) | Clear the alert | Detail window |
+| **Price Alert** (watching) | Check now | Detail window |
+| **Price Alert** (empty key) | Open search | Open search |
+
+**Watchlist** keeps up to 12 symbols on one key, with a dot for each across the top. Type them
+into the key's settings or add them with search, which stays open so you can add several. It can
+also move on by itself every 5, 10 or 30 seconds.
+
+**Price Alert** watches one symbol for a price (rises to / falls to), a move today (up or down by
+a percentage) or a new 52-week high or low. The key shows the condition in amber and how far away
+it is; when the alert fires, the whole key turns amber and pulses until you press it. It then
+waits for the price to move back past the line by 0.5% (or half a point, for a % move) before it
+watches again, so a price sitting on the line cannot fire it over and over. An alert keeps
+watching while its folder is closed. After Stream Deck restarts, one in a closed folder starts
+again when that folder is next opened.
 
 Each key shows one symbol — a stock, ETF, fund, index or coin — with its price, today's change
 and a sparkline of the day. Drag a Ticker onto a key, press it, type a company name ("apple",

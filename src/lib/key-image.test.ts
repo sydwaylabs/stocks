@@ -79,6 +79,24 @@ describe("key image", () => {
     expect(renderKey({ ...quote, earningsSoon: true })).toContain("#fab219");
   });
 
+  it("draws an alert armed in amber, and fired as a pulsing amber key", () => {
+    const armed = renderKey({ kind: "alert", symbol: "AAPL", price: 343.46, caption: "Above 350.00", detail: "1.9% away", state: "armed" });
+    expect(armed).toContain("Above 350.00");
+    expect(armed).toContain("#fab219");
+    const on = renderKey({ kind: "alert", symbol: "AAPL", price: 351, caption: "Above 350.00", state: "fired", pulse: true });
+    const off = renderKey({ kind: "alert", symbol: "AAPL", price: 351, caption: "Above 350.00", state: "fired", pulse: false });
+    expect(on).toContain('<rect width="144" height="144" fill="#fab219"/>');
+    expect(off).toContain('fill="#4a3507"');
+    expect(on).toContain("Press to clear");
+  });
+
+  it("marks a watchlist's place with dots, and none for a single symbol", () => {
+    const at = (active: number, count: number) => renderKey({ ...quote, dots: { count, active } });
+    expect((at(1, 4).match(/<circle/g) ?? []).length).toBe(4);
+    expect(at(1, 4)).toContain('r="3.5"');
+    expect(at(0, 1)).not.toContain("<circle");
+  });
+
   it("colours by trend and dims when stale", () => {
     expect(renderKey(quote)).toContain("#29bd50");
     expect(renderKey({ ...quote, change: -1, changePct: -0.3 })).toContain("#ef4b4b");

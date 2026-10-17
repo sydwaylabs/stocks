@@ -31,6 +31,12 @@ Each key shows the price, today's change in green or red, and a sparkline of the
 refresh now; **hold** for a window with a larger chart, the day and 52-week ranges, volume and
 market cap, and a button to change the symbol.
 
+### Keep an eye on more with less
+
+**Watchlist** puts up to twelve symbols on one key — press for the next, or let it rotate.
+**Price Alert** turns its key amber when a stock reaches your price, moves a percentage in a day,
+or hits a new 52-week high or low, and keeps watching while you work in another folder.
+
 ### Works out of the box
 
 Quotes come from Yahoo Finance with no sign-up. Add a free Finnhub key once, in any key's settings,

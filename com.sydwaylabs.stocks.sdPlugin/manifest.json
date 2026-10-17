@@ -28,6 +28,44 @@
 			],
 			"SupportedInMultiActions": false,
 			"UserTitleEnabled": false
+		},
+		{
+			"Name": "Watchlist",
+			"UUID": "com.sydwaylabs.stocks.watchlist",
+			"Icon": "imgs/actions/watchlist/icon",
+			"Tooltip": "Several symbols on one key. Press for the next, hold for details. On an empty key, press to add symbols.",
+			"PropertyInspectorPath": "ui/watchlist.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/watchlist/key",
+					"TitleAlignment": "middle",
+					"Name": "Default"
+				}
+			],
+			"UserTitleEnabled": false,
+			"SupportedInMultiActions": false
+		},
+		{
+			"Name": "Price Alert",
+			"UUID": "com.sydwaylabs.stocks.alert",
+			"Icon": "imgs/actions/alert/icon",
+			"Tooltip": "Turns amber when a price, a move today or a 52-week high or low is reached. Press to clear it, hold for details.",
+			"PropertyInspectorPath": "ui/alert.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/alert/key",
+					"TitleAlignment": "middle",
+					"Name": "Default"
+				}
+			],
+			"UserTitleEnabled": false,
+			"SupportedInMultiActions": false
 		}
 	],
 	"CodePath": "bin/plugin.js",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mergeWithDefaults } from "./settings.js";
+import { addSymbol, mergeAlert, mergeWatchlist, mergeWithDefaults, parseSymbols } from "./settings.js";
 
 describe("mergeWithDefaults", () => {
   it("fills a new key with defaults", () => {
@@ -24,5 +24,47 @@ describe("mergeWithDefaults", () => {
     expect(mergeWithDefaults({ display: "nonsense" as "price" }).display).toBe("price");
     expect(mergeWithDefaults({ changeAs: "amount" }).changeAs).toBe("amount");
     expect(mergeWithDefaults({ changeAs: "nonsense" as "amount" }).changeAs).toBe("percent");
+  });
+});
+
+describe("mergeAlert", () => {
+  it("defaults a new key to an unset 'above' alert, armed", () => {
+    expect(mergeAlert({})).toMatchObject({ symbol: "", condition: "above", target: 0, phase: "armed", firedAt: null });
+  });
+
+  it("reads a typed target, forgiving $, % and commas", () => {
+    expect(mergeAlert({ target: "1,250.50" as unknown as number }).target).toBe(1250.5);
+    expect(mergeAlert({ target: "$350" as unknown as number }).target).toBe(350);
+    expect(mergeAlert({ target: "3%" as unknown as number }).target).toBe(3);
+    expect(mergeAlert({ target: "-5" as unknown as number }).target).toBe(0);
+    expect(mergeAlert({ target: "abc" as unknown as number }).target).toBe(0);
+  });
+
+  it("keeps only known conditions and phases", () => {
+    expect(mergeAlert({ condition: "sideways" as "above" }).condition).toBe("above");
+    expect(mergeAlert({ phase: "fired" }).phase).toBe("fired");
+    expect(mergeAlert({ phase: "exploded" as "armed" }).phase).toBe("armed");
+  });
+});
+
+describe("watchlist settings", () => {
+  it("parses symbols with commas or spaces, without repeats, up to twelve", () => {
+    expect(parseSymbols("aapl, msft  btc-usd,AAPL")).toEqual(["AAPL", "MSFT", "BTC-USD"]);
+    expect(parseSymbols("^gsptse RY.TO EURUSD=X")).toEqual(["^GSPTSE", "RY.TO", "EURUSD=X"]);
+    expect(parseSymbols("a b c d e f g h i j k l m n")).toHaveLength(12);
+    expect(parseSymbols("<script> ;")).toEqual([]);
+  });
+
+  it("normalises the stored text and clamps rotation to the choices", () => {
+    expect(mergeWatchlist({ symbols: "aapl msft", rotateSec: "10" as unknown as number })).toEqual({
+      symbols: "AAPL, MSFT", rotateSec: 10, display: "price", changeAs: "percent",
+    });
+    expect(mergeWatchlist({ rotateSec: 7 }).rotateSec).toBe(0);
+  });
+
+  it("adds a symbol once, and not past the limit", () => {
+    expect(addSymbol("AAPL", "msft")).toEqual({ symbols: "AAPL, MSFT", added: true });
+    expect(addSymbol("AAPL, MSFT", "AAPL")).toEqual({ symbols: "AAPL, MSFT", added: false });
+    expect(addSymbol("A B C D E F G H I J K L", "Z").added).toBe(false);
   });
 });

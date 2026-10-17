@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head lang="en">
+  <meta charset="utf-8" />
+  <!-- Vendored, never from a CDN: the inspector has to render with no network. -->
+  <script src="sdpi-components.js"></script>
+  <style>
+    /* sdpi-components defines none of the host's --sdpi-* variables, so every var() needs a
+       fallback or it resolves to black text on a dark panel. The release gate checks this. */
+    .hint { color: var(--sdpi-color, #d8d8d8); opacity: 0.7; font-size: 9pt; margin: 4px 0 0 95px; max-width: 241px; }
+    .actions { margin: 4px 0 10px 95px; max-width: 241px; display: flex; gap: 6px; }
+    .section { color: var(--sdpi-color, #d8d8d8); font-size: 9pt; font-weight: 600; margin: 16px 0 4px; opacity: 0.85; }
+    #keyStatus.bad { color: #ef4b4b; opacity: 1; }
+    #keyStatus.good { color: #29bd50; opacity: 1; }
+  </style>
+</head>
+<body>
+  <sdpi-item label="Symbol">
+    <sdpi-textfield setting="symbol" placeholder="e.g. AAPL, VOO, BTC-USD" maxlength="24"></sdpi-textfield>
+  </sdpi-item>
+  <p class="hint" id="symbolName"></p>
+  <div class="actions">
+    <sdpi-button id="search">Search…</sdpi-button>
+  </div>
+
+  <sdpi-item label="Alert when">
+    <sdpi-select setting="condition" id="condition" default="above">
+      <option value="above">Price rises to</option>
+      <option value="below">Price falls to</option>
+      <option value="up-pct">Up today by (%)</option>
+      <option value="down-pct">Down today by (%)</option>
+      <option value="high-52w">New 52-week high</option>
+      <option value="low-52w">New 52-week low</option>
+    </sdpi-select>
+  </sdpi-item>
+
+  <!-- A price or a percentage depending on the condition; arrives as a string, read in mergeAlert. -->
+  <div id="targetRow">
+    <sdpi-item label="Target">
+      <sdpi-textfield setting="target" id="target" placeholder="350.00" pattern="[0-9.,$%]+"></sdpi-textfield>
+    </sdpi-item>
+  </div>
+  <p class="hint" id="conditionHint"></p>
+  <p class="hint">The key turns amber and pulses when the alert fires. Press to clear it; it watches again once the price moves back past the line. Hold for details.</p>
+
+  <p class="section">Finnhub key (optional, shared by every Stocks key)</p>
+  <!-- Not bound to a setting: the plugin checks the key, then stores it sealed. -->
+  <sdpi-item label="API key">
+    <sdpi-password id="fhKey" placeholder="Paste a free key"></sdpi-password>
+  </sdpi-item>
+  <div class="actions">
+    <sdpi-button id="saveKey">Save key</sdpi-button>
+    <sdpi-button id="removeKey">Remove</sdpi-button>
+    <sdpi-button id="signup">Get a free key</sdpi-button>
+  </div>
+  <p class="hint" id="keyStatus">Without a key, quotes come from Yahoo Finance.</p>
+
+  <script>
+    // The target row only for conditions that need one, worded for a price or a percentage.
+    // valuechange for the change itself, getSettings for the first paint (references/property-inspector.md).
+    document.addEventListener("DOMContentLoaded", () => {
+      const select = document.getElementById("condition");
+      const row = document.getElementById("targetRow");
+      const hint = document.getElementById("conditionHint");
+      const field = document.getElementById("target");
+      const HINTS = {
+        "above": "Fires when the price reaches this or higher.",
+        "below": "Fires when the price reaches this or lower.",
+        "up-pct": "Fires when today's gain reaches this many percent.",
+        "down-pct": "Fires when today's loss reaches this many percent. Enter 3 for a 3% drop.",
+        "high-52w": "Fires when the price reaches a new 52-week high.",
+        "low-52w": "Fires when the price reaches a new 52-week low.",
+      };
+      const sync = (condition) => {
+        const c = condition || "above";
+        row.style.display = c === "high-52w" || c === "low-52w" ? "none" : "";
+        field?.setAttribute("placeholder", c.endsWith("pct") ? "3" : "350.00");
+        hint.textContent = HINTS[c] || "";
+      };
+      sync("above");
+      select?.addEventListener("valuechange", () => sync(select.value));
+      SDPIComponents.streamDeckClient.getSettings()
+        .then((info) => sync(info?.payload?.settings?.condition ?? select?.value))
+        .catch(() => sync(select?.value));
+      SDPIComponents.streamDeckClient.didReceiveSettings.subscribe((info) => sync(info?.payload?.settings?.condition));
+    });
+  </script>
+  <script src="stocks-inspector.js"></script>
+</body>
+</html>

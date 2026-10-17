@@ -9,12 +9,11 @@ import streamDeck, {
   type WillDisappearEvent,
 } from "@elgato/streamdeck";
 
-import { finnhubKey, onFinnhubKeyChanged, saveFinnhubKey } from "../key-store.js";
-import { keyHint } from "../lib/finnhub-key.js";
+import { finnhubKey } from "../key-store.js";
 import { renderKey, toDataUri, type KeyView } from "../lib/key-image.js";
-import * as finnhub from "../lib/providers/finnhub.js";
 import { ProviderError } from "../lib/providers/types.js";
-import { daysUntil, exchangeDate, normalise, QuoteService, type Snapshot } from "../lib/quotes.js";
+import { daysUntil, exchangeDate, normalise, type Snapshot } from "../lib/quotes.js";
+import { handleSharedMessage, LONG_PRESS_MS, onKeyChange, quotes } from "../services.js";
 import { EDITABLE, mergeWithDefaults, type TickerSettings } from "../lib/settings.js";
 import { openStockWindow } from "../stock-window.js";
 import { ticker } from "../tick.js";
@@ -30,12 +29,8 @@ import { ticker } from "../tick.js";
  * is why the tap may act here. The hold opens the window, as on every Sydway Labs key.
  */
 
-const LONG_PRESS_MS = 500;
 /** The key's "E" badge shows from this many days before an earnings report until the day itself. */
 const EARNINGS_BADGE_DAYS = 7;
-const FINNHUB_SIGNUP = "https://finnhub.io/register";
-
-const quotes = new QuoteService(finnhubKey);
 
 type PluginMessageEvent = Parameters<NonNullable<SingletonAction<TickerSettings>["onSendToPlugin"]>>[0];
 
@@ -58,8 +53,7 @@ export class Ticker extends SingletonAction<TickerSettings> {
 
   constructor() {
     super();
-    onFinnhubKeyChanged(() => {
-      quotes.invalidate();
+    onKeyChange(() => {
       for (const id of this.instances.keys()) void this.refresh(id, { force: true });
     });
   }
@@ -143,20 +137,8 @@ export class Ticker extends SingletonAction<TickerSettings> {
 
   override async onSendToPlugin(ev: PluginMessageEvent): Promise<void> {
     const payload = (ev.payload ?? {}) as { event?: string; key?: unknown };
-    switch (payload.event) {
-      case "search":
-        this.openWindow(ev.action.id, "search");
-        return;
-      case "openSignup":
-        await streamDeck.system.openUrl(FINNHUB_SIGNUP);
-        return;
-      case "getKeyStatus":
-        await this.sendKeyStatus();
-        return;
-      case "setFinnhubKey":
-        await this.setFinnhubKey(typeof payload.key === "string" ? payload.key : "");
-        return;
-    }
+    if (payload.event === "search") this.openWindow(ev.action.id, "search");
+    else await handleSharedMessage(payload);
   }
 
   // ---- refreshing and drawing ----
@@ -287,29 +269,6 @@ export class Ticker extends SingletonAction<TickerSettings> {
     void this.refresh(id, { force: true });
   }
 
-  // ---- the Finnhub key ----
-
-  private async sendKeyStatus(message?: string, ok?: boolean): Promise<void> {
-    const key = await finnhubKey();
-    await streamDeck.ui.sendToPropertyInspector({ event: "keyStatus", hasKey: !!key, hint: keyHint(key), message: message ?? null, ok: ok ?? null });
-  }
-
-  private async setFinnhubKey(raw: string): Promise<void> {
-    const key = raw.trim();
-    if (key) {
-      try {
-        await finnhub.fetchQuote("AAPL", key);
-      } catch (error) {
-        if (error instanceof ProviderError && error.kind === "unauthorized") {
-          await this.sendKeyStatus("Finnhub did not accept that key. Nothing was saved.", false);
-          return;
-        }
-        // Anything else (a network blip, a rate limit) says nothing about the key; save it.
-      }
-    }
-    await saveFinnhubKey(key);
-    await this.sendKeyStatus(key ? "Key saved. Quotes now come from Finnhub where it covers the symbol." : "Key removed. Quotes come from Yahoo.", true);
-  }
 }
 
 function tickId(id: string): string {

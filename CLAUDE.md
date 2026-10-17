@@ -20,9 +20,19 @@ A Stream Deck plugin (`com.sydwaylabs.stocks`), built from streamdeck-kit.
 
 ## This plugin
 
-One action, **Ticker** (`com.sydwaylabs.stocks.ticker`): a quote per key, drawn as SVG
-(`src/lib/key-image.ts`). Tap refreshes (a read-only request, so the tap may act), hold opens the
-window; an empty key opens search on any press.
+Three actions, all drawn as SVG (`src/lib/key-image.ts`), all sharing one `QuoteService` and the
+Finnhub key handling through `src/services.ts`, and one inspector script (`ui/stocks-inspector.js`):
+
+- **Ticker** (`com.sydwaylabs.stocks.ticker`): one quote. Tap refreshes, hold opens the window.
+- **Watchlist** (`.watchlist`): up to 12 symbols, dots across the top. Tap moves on (pausing
+  rotation), hold opens the window without "Change symbol". Search adds and stays open.
+- **Price Alert** (`.alert`): logic in `src/lib/alert.ts` (armed → fired → cleared → armed, with
+  a 0.5% re-arm margin). Tap clears a fired alert, otherwise checks now. Its watch ticker keeps
+  running after `willDisappear` (only the pulse and window stop); the phase is saved in settings.
+  Known gap: after a restart Stream Deck reports only visible keys, so a hidden alert resumes when
+  its folder is opened.
+
+Every action: hold opens the window, and an empty key opens search on any press.
 
 - **Data**: `src/lib/quotes.ts` chooses sources; parsers live in `src/lib/providers/` and are
   tested against fixtures captured from the live endpoints. Yahoo `v8/finance/chart` and

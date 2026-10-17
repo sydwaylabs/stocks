@@ -26,8 +26,17 @@ export type StockWindowOptions = {
   quotes: QuoteService;
   /** The key's symbol now, or "" — read per request, since a pick changes it mid-window. */
   symbol: () => string;
-  /** Assigns a picked result to the key. */
-  onSelect: (result: SearchResult) => Promise<void>;
+  /**
+   * Assigns a picked result to the key, or adds it to a list. May return a line for the window to
+   * show ("Added MSFT — 3 of 12"), or a refusal.
+   */
+  onSelect: (result: SearchResult) => Promise<void | { ok?: boolean; message?: string }>;
+  /** Open in search even if the key has a symbol. */
+  startIn?: "search";
+  /** Search adds to a list and stays open, rather than assigning one and closing. */
+  adding?: boolean;
+  /** Offer "Change symbol" in the detail view (default true). */
+  canChange?: boolean;
   onOpen: (close: () => void) => void;
 };
 
@@ -39,8 +48,10 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
   // and only a symbol in here — the one on screen — is answered.
   const logoUrls = new Map<string, string>();
   const initialSymbol = options.symbol();
-  const mode = initialSymbol ? "detail" : "search";
-  const windowTitle = initialSymbol ? `Stocks — ${initialSymbol.slice(0, 16)}` : "Stocks — choose a symbol";
+  const mode = initialSymbol && options.startIn !== "search" ? "detail" : "search";
+  const windowTitle = options.adding
+    ? "Stocks — add to watchlist"
+    : mode === "detail" ? `Stocks — ${initialSymbol.slice(0, 16)}` : "Stocks — choose a symbol";
 
   const onMessage = async (message: WindowMessage): Promise<unknown> => {
     switch (message.type) {
@@ -83,8 +94,8 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
       case "select": {
         const result = session.pick(message.symbol);
         if (!result) return { ok: false, message: "Pick one of the results shown." };
-        await options.onSelect(result);
-        return { ok: true };
+        const outcome = await options.onSelect(result);
+        return { ok: outcome?.ok ?? true, message: outcome?.message };
       }
       default:
         return {};
@@ -95,7 +106,13 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
   for (const host of hosts) {
     try {
       await serveWindow(host, {
-        renderPage: (token) => renderPage(token, { mode, symbol: initialSymbol || undefined, windowTitle }),
+        renderPage: (token) => renderPage(token, {
+          mode,
+          symbol: initialSymbol || undefined,
+          windowTitle,
+          adding: options.adding,
+          canChange: options.canChange,
+        }),
         onMessage,
         onOpen: options.onOpen,
         onWarn: (text) => streamDeck.logger.warn(text),

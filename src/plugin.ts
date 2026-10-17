@@ -2,7 +2,9 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import streamDeck from "@elgato/streamdeck";
 
+import { PriceAlert } from "./actions/alert.js";
 import { Ticker } from "./actions/ticker.js";
+import { Watchlist } from "./actions/watchlist.js";
 
 // When relaunched via `streamdeck restart`, process.cwd() may be the repo root rather than the
 // sdPlugin directory, because the dev install is a symlink and relaunching resolves it. The SDK
@@ -18,6 +20,8 @@ streamDeck.logger.setLevel("info");
 streamDeck.logger.info(`Stocks starting (node ${process.version}, cwd ${process.cwd()})`);
 
 streamDeck.actions.registerAction(new Ticker());
+streamDeck.actions.registerAction(new Watchlist());
+streamDeck.actions.registerAction(new PriceAlert());
 
 // Must come after every registerAction; registering afterwards silently does nothing.
 streamDeck.connect();

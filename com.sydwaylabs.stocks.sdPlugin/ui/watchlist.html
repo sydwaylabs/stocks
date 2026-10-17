@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+<head lang="en">
+  <meta charset="utf-8" />
+  <!-- Vendored, never from a CDN: the inspector has to render with no network. -->
+  <script src="sdpi-components.js"></script>
+  <style>
+    /* sdpi-components defines none of the host's --sdpi-* variables, so every var() needs a
+       fallback or it resolves to black text on a dark panel. The release gate checks this. */
+    .hint { color: var(--sdpi-color, #d8d8d8); opacity: 0.7; font-size: 9pt; margin: 4px 0 0 95px; max-width: 241px; }
+    .actions { margin: 4px 0 10px 95px; max-width: 241px; display: flex; gap: 6px; }
+    .section { color: var(--sdpi-color, #d8d8d8); font-size: 9pt; font-weight: 600; margin: 16px 0 4px; opacity: 0.85; }
+    #keyStatus.bad { color: #ef4b4b; opacity: 1; }
+    #keyStatus.good { color: #29bd50; opacity: 1; }
+  </style>
+</head>
+<body>
+  <!-- Typed, or added with search; the plugin tidies it to "AAPL, MSFT, BTC-USD". -->
+  <sdpi-item label="Symbols">
+    <sdpi-textfield setting="symbols" placeholder="AAPL, MSFT, BTC-USD"></sdpi-textfield>
+  </sdpi-item>
+  <p class="hint">Up to 12, separated by commas or spaces.</p>
+  <div class="actions">
+    <sdpi-button id="search">Add with search…</sdpi-button>
+  </div>
+
+  <!-- Numbers arrive in the plugin as strings; coerced in mergeWatchlist. -->
+  <sdpi-item label="Rotate">
+    <sdpi-select setting="rotateSec" default="0">
+      <option value="0">Only when pressed</option>
+      <option value="5">Every 5 seconds</option>
+      <option value="10">Every 10 seconds</option>
+      <option value="30">Every 30 seconds</option>
+    </sdpi-select>
+  </sdpi-item>
+
+  <sdpi-item label="Show">
+    <sdpi-select setting="display" default="price">
+      <option value="price">Price and change</option>
+      <option value="change">Change only</option>
+    </sdpi-select>
+  </sdpi-item>
+
+  <sdpi-item label="Change as">
+    <sdpi-select setting="changeAs" default="percent">
+      <option value="percent">Percent (+1.23%)</option>
+      <option value="amount">Amount (+$4.20)</option>
+    </sdpi-select>
+  </sdpi-item>
+  <p class="hint">Press for the next symbol, hold for details. A press pauses rotation for a minute.</p>
+
+  <p class="section">Finnhub key (optional, shared by every Stocks key)</p>
+  <!-- Not bound to a setting: the plugin checks the key, then stores it sealed. -->
+  <sdpi-item label="API key">
+    <sdpi-password id="fhKey" placeholder="Paste a free key"></sdpi-password>
+  </sdpi-item>
+  <div class="actions">
+    <sdpi-button id="saveKey">Save key</sdpi-button>
+    <sdpi-button id="removeKey">Remove</sdpi-button>
+    <sdpi-button id="signup">Get a free key</sdpi-button>
+  </div>
+  <p class="hint" id="keyStatus">Without a key, quotes come from Yahoo Finance.</p>
+
+  <script src="stocks-inspector.js"></script>
+</body>
+</html>

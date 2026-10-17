@@ -13,6 +13,7 @@ describe("window page", () => {
     { mode: "search" as const, windowTitle: "Stocks — choose a symbol" },
     { mode: "detail" as const, symbol: "AAPL", windowTitle: "Stocks — AAPL" },
     { mode: "detail" as const, symbol: "</script><script>bad()</script>", windowTitle: "</script>`${x}`" },
+    { mode: "search" as const, windowTitle: "Stocks — add to watchlist", adding: true, canChange: false },
   ];
 
   it("emits two script blocks that parse, for every start", () => {

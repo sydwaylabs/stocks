@@ -16,6 +16,10 @@ export type WindowInit = {
   mode: "detail" | "search";
   symbol?: string;
   windowTitle: string;
+  /** Search adds to a list and stays open for the next, instead of assigning one and closing. */
+  adding?: boolean;
+  /** Offer "Change symbol" in the detail view. Off for a watchlist, whose list is edited elsewhere. */
+  canChange?: boolean;
 };
 
 export const WINDOW_WIDTH = 640;
@@ -136,6 +140,7 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .meta { color: var(--fg-faint); font-size: 11px; margin-top: 10px; }
 .note { color: var(--slow); font-size: 12px; margin-top: 8px; }
 .notice { color: var(--fg-dim); padding: 30px 10px; text-align: center; }
+.added { color: var(--good); font-size: 12px; margin: 8px 2px 0; min-height: 16px; }
 
 /* search */
 .search-box { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; color: var(--fg); background: var(--card); border: 1px solid var(--card-line); border-radius: 8px; padding: 9px 11px; }
@@ -196,6 +201,7 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 <main id="search" hidden>
   <input class="search-box" id="q" type="text" placeholder="Search a company, fund, ETF or crypto" autocomplete="off" spellcheck="false" aria-label="Search">
   <ul class="results" id="results" role="listbox"></ul>
+  <p class="added" id="s-added"></p>
   <p class="notice" id="s-notice" hidden></p>
 </main>
 
@@ -295,11 +301,11 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     $("detail").hidden = true;
     $("d-error").hidden = true;
     $("search").hidden = next !== "search";
-    $("change").hidden = next !== "detail";
+    $("change").hidden = next !== "detail" || INIT.canChange === false;
     clearInterval(poll);
     if (next === "search") {
-      $("chip").textContent = symbol ? "Change " + symbol : "Choose a symbol";
-      setFooter([["↑↓", "choose"], ["↵", "pick"], ["esc", openedForSearch ? "close" : "back"]]);
+      $("chip").textContent = INIT.adding ? "Add to watchlist" : symbol ? "Change " + symbol : "Choose a symbol";
+      setFooter([["↑↓", "choose"], ["↵", INIT.adding ? "add" : "pick"], ["esc", openedForSearch ? (INIT.adding ? "done" : "close") : "back"]]);
       var q = $("q");
       q.value = query;
       q.focus();
@@ -658,6 +664,16 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (!r) return;
     post("select", { symbol: r.symbol }).then(function (reply) {
       if (!reply || !reply.ok) { renderResults((reply && reply.message) || "Could not set that symbol."); return; }
+      /* Adding to a list: say so, clear the box, and stay for the next one. */
+      if (INIT.adding) {
+        $("s-added").textContent = reply.message || ("Added " + r.symbol);
+        query = "";
+        results = [];
+        $("q").value = "";
+        renderResults();
+        $("q").focus();
+        return;
+      }
       symbol = r.symbol;
       rangeCharts = {};
       chart1d = null;

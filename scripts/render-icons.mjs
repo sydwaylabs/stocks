@@ -25,6 +25,10 @@ const ICONS = [
     { src: "ticker-icon.svg", path: "imgs/actions/ticker/icon", size: 72 },
     // Shown only until the plugin draws the key; the plugin draws every state itself.
     { src: "ticker-key.svg", path: "imgs/actions/ticker/key", size: 72 },
+    { src: "watchlist-icon.svg", path: "imgs/actions/watchlist/icon", size: 72 },
+    { src: "watchlist-key.svg", path: "imgs/actions/watchlist/key", size: 72 },
+    { src: "alert-icon.svg", path: "imgs/actions/alert/icon", size: 72 },
+    { src: "alert-key.svg", path: "imgs/actions/alert/key", size: 72 },
 ];
 
 for (const icon of ICONS) {

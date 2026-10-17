@@ -9,11 +9,28 @@ import { formatChangeShort, formatPct, formatPrice, trendOf, type Trend } from "
  * length rather than trusting a face's metrics.
  */
 
+/** A watchlist's place in its list, drawn as a row of dots across the top. */
+export type Dots = { count: number; active: number };
+
 export type KeyView =
-  | { kind: "empty" }
-  | { kind: "loading"; symbol: string }
+  | { kind: "empty"; caption?: string }
+  | { kind: "loading"; symbol: string; dots?: Dots }
+  | {
+      kind: "alert";
+      symbol: string;
+      price?: number;
+      /** "Above 350.00", "Down 3% today", or a setup prompt. */
+      caption: string;
+      /** "1.9% away", "Rearms below 348.25". */
+      detail?: string;
+      state: "armed" | "fired" | "cleared" | "setup";
+      /** Which half of the fired pulse to draw. */
+      pulse?: boolean;
+      stale?: boolean;
+    }
   | {
       kind: "quote";
+      dots?: Dots;
       symbol: string;
       price: number;
       change?: number;
@@ -28,7 +45,7 @@ export type KeyView =
       earningsSoon?: boolean;
       stale: boolean;
     }
-  | { kind: "error"; symbol: string; message: string; hint?: string };
+  | { kind: "error"; symbol: string; message: string; hint?: string; dots?: Dots };
 
 const SIZE = 144;
 const BG = "#000000";
@@ -89,6 +106,56 @@ export function sparkline(points: number[], prevClose: number | undefined, colou
 }
 
 const EARNINGS = "#fab219";
+const AMBER = "#fab219";
+/** The fired pulse's dark half: amber mixed well down into the key's black. */
+const AMBER_DARK = "#4a3507";
+
+/** Up to twelve dots, centred across the top edge; the current one filled, the rest outlined. */
+function dotsRow(dots: Dots | undefined): string {
+  if (!dots || dots.count < 2) return "";
+  const gap = dots.count > 8 ? 9 : 12;
+  const start = SIZE / 2 - ((dots.count - 1) * gap) / 2;
+  return Array.from({ length: dots.count }, (_, i) =>
+    i === dots.active
+      ? `<circle cx="${start + i * gap}" cy="6" r="3.5" fill="${FG}"/>`
+      : `<circle cx="${start + i * gap}" cy="6" r="2.5" fill="#55555c"/>`
+  ).join("");
+}
+
+/**
+ * A line of words on a 144 key: its own size up to `max`, smaller as it gets longer. 0.6 of the
+ * font size is a generous average advance for mixed text at weight 600–700, so 130px always fits.
+ */
+export function fitSize(line: string, max: number): number {
+  return Math.max(11, Math.min(max, Math.floor(130 / (Math.max(1, line.length) * 0.6))));
+}
+
+/** Alert keys: the price, then what they are waiting for in amber, then how far there is to go. */
+function alertKey(view: Extract<KeyView, { kind: "alert" }>): string {
+  const mid = SIZE / 2;
+  const sym = symbolFont(view.symbol);
+  if (view.state === "fired") {
+    const bg = view.pulse ? AMBER : AMBER_DARK;
+    const ink = view.pulse ? BG : AMBER;
+    const price = view.price !== undefined ? formatPrice(view.price) : "";
+    return [
+      `<rect width="${SIZE}" height="${SIZE}" fill="${bg}"/>`,
+      text(mid, 34, sym.size, ink, sym.text),
+      price ? text(mid, 74, numberFont(price), ink, price) : "",
+      text(mid, 106, fitSize(view.caption, 17), ink, view.caption, 700),
+      text(mid, 132, 16, ink, "Press to clear", 600),
+    ].join("");
+  }
+  const fade = (c: string) => (view.stale ? mixHex(BG, c, 0.45) : c);
+  const price = view.price !== undefined ? formatPrice(view.price) : "";
+  const captionColour = view.state === "armed" ? AMBER : DIM;
+  return [
+    text(mid, 34, sym.size, fade(FG), sym.text),
+    price ? text(mid, 72, numberFont(price), fade(FG), price) : "",
+    text(mid, 104, fitSize(view.caption, 17), fade(captionColour), view.caption, 700),
+    view.detail ? text(mid, 130, fitSize(view.detail, 16), fade(DIM), view.detail, 600) : "",
+  ].join("");
+}
 
 /**
  * A small amber "E" in the top-right corner, clear of a five-letter symbol (whose ink ends near
@@ -104,25 +171,30 @@ export function renderKey(view: KeyView): string {
   const mid = SIZE / 2;
 
   switch (view.kind) {
+    case "alert":
+      // The fired state paints its own background over the black.
+      parts.push(alertKey(view));
+      break;
+
     case "empty":
       parts.push(
         `<circle cx="${mid}" cy="58" r="26" fill="none" stroke="${ACCENT}" stroke-width="5"/>`,
         `<rect x="${mid - 2.5}" y="44" width="5" height="28" rx="2" fill="${ACCENT}"/>`,
         `<rect x="${mid - 14}" y="55.5" width="28" height="5" rx="2" fill="${ACCENT}"/>`,
         text(mid, 116, 19, DIM, "Press to", 600),
-        text(mid, 137, 19, DIM, "choose", 600)
+        text(mid, 137, 19, DIM, view.caption ?? "choose", 600)
       );
       break;
 
     case "loading": {
       const sym = symbolFont(view.symbol);
-      parts.push(text(mid, 40, sym.size, FG, sym.text), text(mid, 92, 30, DIM, "···"));
+      parts.push(dotsRow(view.dots), text(mid, 40, sym.size, FG, sym.text), text(mid, 92, 30, DIM, "···"));
       break;
     }
 
     case "error": {
       const sym = symbolFont(view.symbol);
-      parts.push(text(mid, 40, sym.size, FG, sym.text), text(mid, 86, 20, "#fab219", view.message, 600));
+      parts.push(dotsRow(view.dots), text(mid, 40, sym.size, FG, sym.text), text(mid, 86, 20, "#fab219", view.message, 600));
       if (view.hint) parts.push(text(mid, 116, 17, DIM, view.hint, 600));
       break;
     }
@@ -133,7 +205,9 @@ export function renderKey(view: KeyView): string {
       const fade = (c: string) => (view.stale ? mixHex(BG, c, 0.45) : c);
       const colour = fade(COLOURS[trend]);
       const sym = symbolFont(view.symbol);
-      parts.push(text(mid, 34, sym.size, fade(FG), sym.text));
+      // Dots across the top push the symbol down a little so the two do not touch at 72px.
+      const symbolY = view.dots && view.dots.count > 1 ? 39 : 34;
+      parts.push(dotsRow(view.dots), text(mid, symbolY, Math.min(sym.size, view.dots && view.dots.count > 1 ? 26 : sym.size), fade(FG), sym.text));
       if (view.earningsSoon) parts.push(earningsBadge(fade(EARNINGS)));
 
       const move = view.changeAs === "amount" ? formatChangeShort(view.change, view.currency) : formatPct(view.changePct);

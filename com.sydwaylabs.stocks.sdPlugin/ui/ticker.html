@@ -59,46 +59,6 @@
   </div>
   <p class="hint" id="keyStatus">Without a key, quotes come from Yahoo Finance.</p>
 
-  <script>
-    // Every message gets an `event` discriminator.
-    document.addEventListener("DOMContentLoaded", () => {
-      const client = SDPIComponents.streamDeckClient;
-      const send = (payload) => client.send("sendToPlugin", payload);
-
-      const showName = (settings) => {
-        document.getElementById("symbolName").textContent = settings?.name ?? "";
-      };
-      client.getSettings().then((info) => showName(info?.payload?.settings)).catch(() => {});
-      client.didReceiveSettings.subscribe((info) => showName(info?.payload?.settings));
-
-      const status = document.getElementById("keyStatus");
-      client.sendToPropertyInspector.subscribe((ev) => {
-        const p = ev?.payload;
-        if (p?.event !== "keyStatus") return;
-        const base = p.hasKey
-          ? "Key saved (" + p.hint + "). Finnhub is used where it covers the symbol; Yahoo fills in the rest."
-          : "Without a key, quotes come from Yahoo Finance.";
-        status.textContent = p.message ? p.message + " " + (p.ok ? "" : base) : base;
-        status.className = "hint" + (p.ok === false ? " bad" : p.ok === true ? " good" : "");
-      });
-      send({ event: "getKeyStatus" });
-
-      document.getElementById("search")?.addEventListener("click", () => send({ event: "search" }));
-      document.getElementById("signup")?.addEventListener("click", () => send({ event: "openSignup" }));
-      document.getElementById("saveKey")?.addEventListener("click", () => {
-        // An unbound sdpi-password still exposes its input; read the property, then the input.
-        const field = document.getElementById("fhKey");
-        const input = field?.shadowRoot?.querySelector("input");
-        const key = String(field?.value || input?.value || "").trim();
-        if (!key) return;
-        status.textContent = "Checking the key with Finnhub…";
-        status.className = "hint";
-        send({ event: "setFinnhubKey", key });
-        if (field) field.value = "";
-        if (input) input.value = "";
-      });
-      document.getElementById("removeKey")?.addEventListener("click", () => send({ event: "setFinnhubKey", key: "" }));
-    });
-  </script>
+  <script src="stocks-inspector.js"></script>
 </body>
 </html>
