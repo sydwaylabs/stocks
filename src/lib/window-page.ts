@@ -233,7 +233,8 @@ ${TIP_CSS}
   <span class="chip" id="chip"></span>
   <span class="spacer"></span>
   <button id="back" hidden>‹ Watchlist</button>
-  <button id="add" hidden>Add symbol…</button>
+  <!-- Neutral, not Timekeeper's green Add: on this screen green means a price went up. -->
+  <button id="add" class="iconbtn" aria-label="Add symbol" data-hint="Add symbol" hidden></button>
   <button id="change" hidden>Change symbol…</button>
 </div>
 
@@ -588,6 +589,14 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     acts.append(remove);
     panel.append(acts);
     r.row.append(panel);
+  }
+
+  /* Lucide plus (ISC). */
+  function plusIcon() {
+    var svg = svgEl("svg", { viewBox: "0 0 24 24", width: 16, height: 16, fill: "none", stroke: "currentColor",
+      "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
+    svg.append(svgEl("path", { d: "M12 5v14M5 12h14" }));
+    return svg;
   }
 
   /* Lucide trash-2 (ISC), the icon Timekeeper's Remove uses; built as elements, not markup. */
@@ -1108,6 +1117,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
 
   $("change").addEventListener("click", function () { show("search"); });
   $("back").addEventListener("click", function () { show("board"); });
+  $("add").append(plusIcon());
   $("add").addEventListener("click", function () { show("search"); });
   Array.prototype.forEach.call($("ranges").children, function (b) {
     b.addEventListener("click", function () { selectRange(b.getAttribute("data-range")); });
