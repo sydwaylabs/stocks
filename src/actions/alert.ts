@@ -180,6 +180,7 @@ export class PriceAlert extends SingletonAction<AlertSettings> {
         changePct: snap.quote.changePct,
         wk52High: snap.details.wk52High,
         wk52Low: snap.details.wk52Low,
+        currency: snap.quote.currency,
         at: Date.now(),
       };
       if (!needsTarget(condition) || target > 0) {

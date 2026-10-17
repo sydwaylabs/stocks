@@ -53,11 +53,16 @@ const CURRENCY_SIGNS: Record<string, string> = { USD: "$", CAD: "C$", AUD: "A$",
  */
 export function formatChangeShort(change: number | undefined, currency?: string): string {
   if (change === undefined) return "";
-  const abs = Math.abs(change);
   const sign = change > 0 ? "+" : change < 0 ? "-" : "";
+  return `${sign}${formatAmount(change, currency)}`;
+}
+
+/** A sum of money without a sign, sized for a key: "$6.54", "C$2.31", "$1,234". */
+export function formatAmount(value: number, currency?: string): string {
+  const abs = Math.abs(value);
   const unit = (currency && CURRENCY_SIGNS[currency]) ?? "";
   const digits = abs >= 1000 ? grouped(0).format(abs) : abs >= 0.01 || abs === 0 ? grouped(2).format(abs) : abs.toPrecision(2);
-  return `${sign}${unit}${digits}`;
+  return `${unit}${digits}`;
 }
 
 /** 3.12T, 845.2B, 12.0M, 950K — market cap and volume. */

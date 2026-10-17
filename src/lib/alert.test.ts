@@ -63,7 +63,10 @@ describe("words for the key", () => {
   });
 
   it("says how far there is to go", () => {
-    expect(distance("above", 350, { price: 343.46 })).toBe("1.9% away");
+    expect(distance("above", 350, { price: 343.46, currency: "USD" })).toBe("$6.54 away");
+    expect(distance("below", 300, { price: 343.46, currency: "USD" }, true)).toBe("$43.46 (12.7%) away");
+    expect(distance("below", 80000, { price: 81610, currency: "USD" })).toBe("$1,610 away");
+    expect(distance("above", 290, { price: 280.01, currency: "CAD" })).toBe("C$9.99 away");
     expect(distance("high-52w", 0, { price: 343.46, wk52High: 348.15 })).toBe("1.4% away");
     expect(distance("up-pct", 3, { price: 1, changePct: 1.2 })).toBe("+1.20% now");
     expect(distance("low-52w", 0, { price: 1 })).toBeUndefined();
@@ -85,7 +88,7 @@ describe("alertView", () => {
   const base = { condition: "above" as const, target: 350, phase: "armed" as const, firedAt: null, firedPrice: null };
 
   it("says what an armed alert is waiting for", () => {
-    expect(alertView(base, { price: 343.46 })).toMatchObject({ caption: "Above 350.00", status: "Watching — 1.9% away.", needsTarget: true });
+    expect(alertView(base, { price: 343.46, currency: "USD" })).toMatchObject({ caption: "Above 350.00", status: "Watching — $6.54 (1.9%) away.", needsTarget: true });
   });
 
   it("asks for a target when there is none", () => {

@@ -1,4 +1,4 @@
-import { formatPct, formatPriceLong } from "./format.js";
+import { formatAmount, formatPct, formatPriceLong } from "./format.js";
 
 /**
  * Price Alert: when a condition is met the key fires, and stays fired until it is pressed. After
@@ -20,7 +20,7 @@ export type Phase = "armed" | "fired" | "cleared";
 export const REARM_MARGIN = 0.005;
 export const REARM_PCT_POINTS = 0.5;
 
-export type Reading = { price: number; changePct?: number; wk52High?: number; wk52Low?: number };
+export type Reading = { price: number; changePct?: number; wk52High?: number; wk52Low?: number; currency?: string };
 
 /** Conditions that need a target the user types; the 52-week ones carry their own. */
 export function needsTarget(condition: Condition): boolean {
@@ -95,16 +95,21 @@ export function describeCondition(condition: Condition, target: number): string 
 }
 
 /**
- * How far there is still to go, for an armed key: "1.9% away", "+1.2% of 3%". Undefined when the
- * reading cannot say.
+ * How far there is still to go, for an armed key. A price target is a sum of money, so its distance
+ * is too: "$6.54 away". The 52-week lines were not chosen in money, so they stay in percent, and a
+ * % alert shows today's move. `long` adds the percentage to a price distance, for the window:
+ * "$6.54 (1.9%) away". Undefined when the reading cannot say.
  */
-export function distance(condition: Condition, target: number, r: Reading): string | undefined {
-  const awayFrom = (line: number | undefined) =>
-    line === undefined || line === 0 ? undefined : `${Math.abs(((line - r.price) / r.price) * 100).toFixed(1)}% away`;
+export function distance(condition: Condition, target: number, r: Reading, long = false): string | undefined {
+  const pct = (line: number) => `${Math.abs(((line - r.price) / r.price) * 100).toFixed(1)}%`;
+  const awayFrom = (line: number | undefined) => (line === undefined || line === 0 ? undefined : `${pct(line)} away`);
   switch (condition) {
     case "above":
-    case "below":
-      return awayFrom(target);
+    case "below": {
+      if (!target) return undefined;
+      const money = formatAmount(target - r.price, r.currency);
+      return long ? `${money} (${pct(target)}) away` : `${money} away`;
+    }
     case "high-52w":
       return awayFrom(r.wk52High);
     case "low-52w":
@@ -167,7 +172,7 @@ export function alertView(
   if (unset) status = "No alert set. Choose a condition and target, or click the chart to pick a price.";
   else if (s.phase === "fired") status = s.firedPrice !== null ? `Fired at ${formatPriceLong(s.firedPrice)}. Press the key, or Clear, to clear it.` : "Fired. Press the key, or Clear, to clear it.";
   else if (s.phase === "cleared") status = `Cleared. ${r ? rearmLine(s.condition, s.target, r).replace(/^Rearm < /, "Watches again below ").replace(/^Rearm > /, "Watches again above ") : "Watches again once the price moves back."}`;
-  else status = `Watching${r ? ` — ${distance(s.condition, s.target, r) ?? "waiting for a price"}` : ""}.`;
+  else status = `Watching${r ? ` — ${distance(s.condition, s.target, r, true) ?? "waiting for a price"}` : ""}.`;
   return {
     condition: s.condition,
     target: s.target,
