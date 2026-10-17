@@ -58,7 +58,6 @@ describe("detail data", () => {
       { label: "Previous close", value: "342.00" },
       { label: "Market cap", value: "5.01T" },
       { label: "Volume", value: "59.8M" },
-      { label: "Type", value: "Stock" },
     ]);
     expect(d.note).toBeUndefined();
   });
@@ -76,13 +75,13 @@ describe("detail data", () => {
       details: { ...snap.details, pe: 31.24, eps: 6.1, dividendYield: 0.4412, beta: 1.2, earnings: { date: "2026-10-29", hour: "amc" }, industry: "Technology", country: "US", website: "https://www.apple.com/" },
     });
     expect(d.rows.map((r) => r.label)).toEqual([
-      "Day range", "52-week range", "Previous close", "Market cap", "Volume", "P/E (TTM)", "EPS (TTM)", "Dividend yield", "Beta", "Next earnings", "Type",
+      "Day range", "52-week range", "Previous close", "Market cap", "Volume", "P/E (TTM)", "EPS (TTM)", "Dividend yield", "Beta", "Next earnings",
     ]);
     expect(d.rows.find((r) => r.label === "Dividend yield")?.value).toBe("0.44%");
     expect(d.rows.find((r) => r.label === "Beta")?.hint).toMatch(/Swings vs the market/);
     // One short line each: none is a paragraph.
     for (const r of d.rows) if (r.hint) expect(r.hint.length).toBeLessThanOrEqual(50);
-    expect(d.rows.find((r) => r.label === "Type")?.hint).toBeUndefined();
+    expect(d.rows.find((r) => r.label === "Type")).toBeUndefined();
     expect(d.company).toBe("Technology · US");
     expect(d.website).toBe("https://www.apple.com/");
   });

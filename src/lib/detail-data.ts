@@ -54,7 +54,7 @@ export function buildDetail(snap: Snapshot): DetailData {
   if (details.dividendYield !== undefined) rows.push({ label: "Dividend yield", value: `${details.dividendYield.toFixed(2)}%` });
   if (details.beta !== undefined) rows.push({ label: "Beta", value: details.beta.toFixed(2) });
   if (details.earnings) rows.push({ label: "Next earnings", value: formatEarnings(details.earnings) });
-  if (details.instrumentType) rows.push({ label: "Type", value: typeLabel(details.instrumentType) });
+  // No "Type" row: the symbol was chosen, so what it is is known; search labels it when choosing.
 
   for (const row of rows) row.hint ??= HINTS[row.label];
 
