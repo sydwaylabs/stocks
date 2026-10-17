@@ -262,7 +262,7 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .pop-note { font-size: 11.5px; color: var(--fg-faint); margin: 8px 2px 0; min-height: 15px; }
 .pop-note.good { color: var(--good); }
 .pop-note.bad { color: var(--slow); }
-#add.on { background: var(--kbd); color: var(--fg); }
+.iconbtn.on { background: var(--kbd); color: var(--fg); }
 
 /* One tooltip for the page (patterns/page-tip): the native host shows no title attribute, and a
    tip on the element itself is clipped by the scrolling board. Hints are sentences, so they wrap. */
@@ -295,12 +295,13 @@ ${TIP_CSS}
   <button id="back" class="iconbtn" aria-label="Back to watchlist" data-hint="Back to watchlist" hidden></button>
   <!-- Neutral, not Timekeeper's green Add: on this screen green means a price went up. -->
   <button id="add" class="iconbtn" aria-label="Add symbol" data-hint="Add symbol" hidden></button>
-  <button id="change" hidden>Change symbol…</button>
+  <!-- The same place, button and popover on every window: + adds to a watchlist, ⇄ changes a key's symbol. -->
+  <button id="change" class="iconbtn" aria-label="Change symbol" data-hint="Change symbol" hidden></button>
 </div>
 
 <main id="board" hidden><div class="wl" id="cards"></div></main>
 <div class="popover" id="add-sheet" role="dialog" aria-label="Add symbol" hidden>
-  <div class="title">Add symbol</div>
+  <div class="title" id="pop-title">Add symbol</div>
   <input id="add-q" type="text" placeholder="Company, fund, ETF or crypto" autocomplete="off" spellcheck="false" aria-label="Search">
   <ul class="pop-results" id="add-results" role="listbox"></ul>
   <p class="pop-note" id="add-note"></p>
@@ -531,7 +532,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       if (firstBoard) {
         firstBoard = false;
         cursor = Math.max(0, boardCards.findIndex(function (c) { return c.symbol === boardOnKey; }));
-        if (INIT.openAdd) setTimeout(function () { toggleAdd(true); }, 0);
+        if (INIT.openAdd) setTimeout(function () { toggleAdd(true, "add"); }, 0);
       }
       renderBoard();
     }).catch(function () {
@@ -696,6 +697,14 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     return svg;
   }
 
+  /* Lucide arrow-left-right (ISC): swap this symbol for another. */
+  function swapIcon() {
+    var svg = svgEl("svg", { viewBox: "0 0 24 24", width: 15, height: 15, fill: "none", stroke: "currentColor",
+      "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
+    svg.append(svgEl("path", { d: "M8 3 4 7l4 4" }), svgEl("path", { d: "M4 7h16" }), svgEl("path", { d: "m16 21 4-4-4-4" }), svgEl("path", { d: "M20 17H4" }));
+    return svg;
+  }
+
   /* Lucide plus (ISC). */
   function plusIcon() {
     var svg = svgEl("svg", { viewBox: "0 0 24 24", width: 16, height: 16, fill: "none", stroke: "currentColor",
@@ -777,14 +786,21 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
 
   function addOpen() { return !$("add-sheet").hidden; }
 
-  function toggleAdd(forceOpen) {
+  /* One popover, two jobs: on a board it adds and stays open; on a Ticker or Alert it changes the
+     symbol and closes. Hung from whichever button opened it. */
+  var popAnchor = "add";
+  function popChanging() { return popAnchor === "change"; }
+
+  function toggleAdd(forceOpen, anchor) {
     var pop = $("add-sheet");
     var opening = forceOpen || pop.hidden;
+    if (anchor) popAnchor = anchor;
     pop.hidden = !opening;
-    $("add").classList.toggle("on", opening);
+    $(popAnchor).classList.toggle("on", opening);
     if (opening) {
-      /* Hang it from the + button, its arrow pointing at the middle of it. */
-      var b = $("add").getBoundingClientRect();
+      $("pop-title").textContent = popChanging() ? "Change symbol" : "Add symbol";
+      /* Hang it from its button, the arrow pointing at the middle of it. */
+      var b = $(popAnchor).getBoundingClientRect();
       pop.style.top = (b.bottom + 9) + "px";
       pop.style.right = Math.max(8, window.innerWidth - b.right) + "px";
       pop.style.setProperty("--arrow", Math.max(8, b.width / 2 - 7) + "px");
@@ -837,6 +853,16 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
         note.className = "pop-note bad";
         return;
       }
+      /* Changing: the window follows the new symbol, and the popover's job is done. */
+      if (popChanging()) {
+        closeAdd();
+        symbol = r.symbol;
+        rangeCharts = {};
+        chart1d = null;
+        drawnKey = "";
+        show("detail");
+        return;
+      }
       note.textContent = reply.message || ("Added " + r.symbol);
       note.className = "pop-note good";
       $("add-q").value = "";
@@ -868,7 +894,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   /* A click anywhere else closes it, as a macOS popover does. */
   document.addEventListener("pointerdown", function (e) {
     if (!addOpen()) return;
-    if ($("add-sheet").contains(e.target) || $("add").contains(e.target)) return;
+    if ($("add-sheet").contains(e.target) || $(popAnchor).contains(e.target)) return;
     closeAdd();
   });
 
@@ -1475,11 +1501,12 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     debounce = setTimeout(runSearch, 250);
   });
 
-  $("change").addEventListener("click", function () { show("search"); });
+  $("change").append(swapIcon());
+  $("change").addEventListener("click", function (e) { e.stopPropagation(); toggleAdd(false, "change"); });
   $("back").append(chevronLeftIcon());
   $("back").addEventListener("click", function () { show("board"); });
   $("add").append(plusIcon());
-  $("add").addEventListener("click", function (e) { e.stopPropagation(); toggleAdd(); });
+  $("add").addEventListener("click", function (e) { e.stopPropagation(); toggleAdd(false, "add"); });
   Array.prototype.forEach.call($("ranges").children, function (b) {
     b.addEventListener("click", function () { selectRange(b.getAttribute("data-range")); });
   });
@@ -1523,7 +1550,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (mode === "board") {
-      if (e.key === "a") { e.preventDefault(); toggleAdd(true); }
+      if (e.key === "a") { e.preventDefault(); toggleAdd(true, "add"); }
       if (e.key === "c") { e.preventDefault(); toggleChangeAs(); }
       if (e.key === "r") { loadBoard(); if (openSym) { rangeCharts = {}; loadDetail(); if (range !== "1d") selectRange(range); } }
       if ((e.key === "ArrowDown" || e.key === "ArrowUp") && boardCards.length) {
@@ -1541,7 +1568,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (e.key === "r") { rangeCharts = {}; loadDetail(); if (range !== "1d") selectRange(range); }
     var digit = ["1", "2", "3", "4", "5", "6"].indexOf(e.key);
     if (digit >= 0) selectRange(["1d", "5d", "1mo", "6mo", "ytd", "1y"][digit]);
-    if (e.key === "s" && INIT.canChange !== false) { e.preventDefault(); show("search"); }
+    if (e.key === "s" && INIT.canChange !== false && mode === "detail") { e.preventDefault(); toggleAdd(true, "change"); }
   });
 
   /* The browser fallback ignores --window-size when Chrome is already running. */
