@@ -41,8 +41,9 @@ const MAX_TICKS = 5;
 const MAX_MONTH_TICKS = 6;
 
 export function buildChart(series: Series, range: ChartRange): ChartData {
-  const { points, times, baseline } = series;
+  const { points, times } = series;
   const n = points.length;
+  const baseline = baselineFor(range, series);
   const last = points[n - 1];
   const change = baseline !== undefined && last !== undefined ? last - baseline : undefined;
   const changePct = change !== undefined && baseline ? (change / baseline) * 100 : undefined;
@@ -80,6 +81,21 @@ export function buildChart(series: Series, range: ChartRange): ChartData {
     points: points.map((v, i) => ({ x: at(i), v, t: times[i] })),
     ticks: everyNth(boundaries, kind === "month" ? MAX_MONTH_TICKS : MAX_TICKS).map((i) => ({ x: at(i), t: times[i], kind })),
   };
+}
+
+/**
+ * What a range's change is measured from — the dashed line.
+ *
+ * - **1D**: yesterday's close. That is what "today's change" means everywhere, key included.
+ * - **YTD**: last year's final close, the standard meaning of year to date.
+ * - **5D, 1M, 6M, 1Y**: the chart's own first point. Measured from the close before the range
+ *   instead, a stock that gapped up on the first day read as "up" on a line that visibly fell —
+ *   NVDA's month in October 2026: first point 219.51, last 214.13, shown as +0.11% against the
+ *   213.90 close the day before. For these the chart is the claim, so the colour follows the line.
+ */
+export function baselineFor(range: ChartRange, series: Series): number | undefined {
+  if (range === "1d" || range === "ytd") return series.baseline;
+  return series.points[0] ?? series.baseline;
 }
 
 /**

@@ -89,10 +89,23 @@ describe("longer ranges", () => {
     expect(chart.sessionStart).toBeUndefined();
   });
 
-  it("measures against the close before the range", () => {
+  it("measures a 5-day range from where its line starts, not the close before it", () => {
     const chart = buildChart(fiveDays(), "5d");
-    expect(chart.baseline).toBe(90);
+    expect(chart.baseline).toBe(100);
     expect(chart.trend).toBe("up");
+  });
+
+  it("colours a range that gapped up and then fell as down", () => {
+    // NVDA, 1M, October 2026: the close before the range was 213.90, the first point 219.51.
+    const series: Series = { points: [219.51, 222, 218, 214.13], times: [0, 1, 2, 3], baseline: 213.9, utcOffset: 0 };
+    const chart = buildChart(series, "1mo");
+    expect(chart).toMatchObject({ baseline: 219.51, trend: "down", changePct: "-2.45%" });
+  });
+
+  it("keeps yesterday's close for 1D and last year's close for YTD", () => {
+    const series: Series = { points: [219.51, 214.13], times: [0, 1], baseline: 213.9, utcOffset: 0 };
+    expect(buildChart(series, "1d").baseline).toBe(213.9);
+    expect(buildChart(series, "ytd").baseline).toBe(213.9);
   });
 
   /** Weekday closes from `from` for `days` calendar days, at 16:00 New York. */
