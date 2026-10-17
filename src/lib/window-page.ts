@@ -170,10 +170,22 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .werr { grid-column: 3 / -1; justify-self: end; color: var(--slow); font-size: 12.5px; }
 .wpanel { padding: 2px 12px 12px; border-top: 1px solid var(--line); }
 .wpanel .chart-head { margin-top: 10px; }
-.wacts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
-.wacts button { font-size: 12px; padding: 3px 10px; }
-.wacts button.quiet { background: none; border-color: transparent; color: var(--fg-dim); }
-.wacts button.quiet:hover { color: var(--fg); }
+.wacts { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 10px; }
+.wacts button { font-size: 12px; padding: 0 10px; height: 28px; box-sizing: border-box; border-radius: 7px; }
+.wacts .iconbtn { padding: 0; }
+/* Icon buttons as Timekeeper has them: outlined, 28px, Remove in the fail red that fills on hover,
+   and their own tooltip, since the native host does not show the title attribute. */
+.iconbtn { flex: 0 0 auto; width: 28px; height: 28px; padding: 0; display: inline-grid; place-items: center; position: relative;
+  color: var(--fg-dim); background: transparent; border: 1px solid var(--card-line); border-radius: 7px; }
+.iconbtn:hover { background: var(--kbd); color: var(--fg); }
+.iconbtn.remove { color: var(--fail); border-color: rgba(208,59,59,.45); }
+.iconbtn.remove:hover { color: #fff; background: var(--fail); border-color: var(--fail); }
+/* Above the button: it sits at the foot of an open row, where a tip below would be cut off. */
+.iconbtn[data-tip]::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); right: 0; z-index: 5;
+  padding: 4px 7px; border-radius: 6px; background: var(--bg); color: var(--fg-dim); border: 1px solid var(--card-line);
+  box-shadow: var(--shadow-lift, 0 6px 18px rgba(0,0,0,.45)); font-size: 11px; white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity .1s ease; }
+.iconbtn[data-tip]:hover::after { opacity: 1; }
 /* In a row, the stats sit four across and label-over-value, so a full set is three short lines. */
 .wpanel .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 16px; margin-top: 10px; }
 .wpanel .stat { flex-direction: column; justify-content: flex-start; gap: 1px; padding: 6px 0; }
@@ -524,11 +536,6 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     panel.append($("d-body"));
     var acts = el("div", "wacts");
     acts.id = "wacts";
-    var remove = el("button", "quiet", "Remove");
-    remove.addEventListener("click", function () {
-      post("remove", { symbol: sym }).then(function () { closeRow(); loadBoard(); });
-    });
-    acts.append(remove);
     if (sym !== boardOnKey) {
       var onKey = el("button", "", "Show on key");
       onKey.addEventListener("click", function () {
@@ -536,8 +543,27 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       });
       acts.append(onKey);
     }
+    var remove = el("button", "iconbtn remove");
+    remove.setAttribute("aria-label", "Remove " + sym);
+    remove.dataset.tip = "Remove from watchlist";
+    remove.append(trashIcon());
+    remove.addEventListener("click", function () {
+      post("remove", { symbol: sym }).then(function () { closeRow(); loadBoard(); });
+    });
+    acts.append(remove);
     panel.append(acts);
     r.row.append(panel);
+  }
+
+  /* Lucide trash-2 (ISC), the icon Timekeeper's Remove uses; built as elements, not markup. */
+  function trashIcon() {
+    var svg = svgEl("svg", { viewBox: "0 0 24 24", width: 14, height: 14, fill: "none", stroke: "currentColor",
+      "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
+    svg.append(
+      svgEl("path", { d: "M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" }),
+      svgEl("path", { d: "M10 11v6M14 11v6" })
+    );
+    return svg;
   }
 
   function renderBoardHeads() {
