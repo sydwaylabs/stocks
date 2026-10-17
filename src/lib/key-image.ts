@@ -289,13 +289,15 @@ export function renderDial(view: KeyView): string {
       const fade = (c: string) => (view.stale ? mixHex(BG, c, 0.45) : c);
       const colour = fade(COLOURS[trend]);
       const move = view.changeAs === "amount" ? formatChangeShort(view.change, view.currency) : formatPct(view.changePct);
-      const symbol = view.symbol.length > 10 ? `${view.symbol.slice(0, 9)}…` : view.symbol;
+      const symbol = view.symbol.length > 9 ? `${view.symbol.slice(0, 8)}…` : view.symbol;
       const price = formatPrice(view.price);
+      // Figures on the left, the chart on the right in a box about twice as wide as tall. Across the
+      // whole strip it was nine to one, and a normal day flattened into a wave.
       parts.push(
-        left(28, 52, 34, fade(FG), symbol),
-        right(DIAL_W - 28, 52, 30, colour, move),
-        left(28, 118, price.length > 7 ? 54 : 60, fade(FG), price),
-        sparkline(view.points ?? [], view.prevClose, mixHex(BG, colour, 0.55), { x: 28, y: 132, w: DIAL_W - 56, h: 38 }),
+        left(28, 50, 32, fade(FG), symbol),
+        left(28, 84, 26, colour, move),
+        left(28, 150, price.length > 7 ? 46 : price.length > 6 ? 50 : 56, fade(FG), price),
+        sparkline(view.points ?? [], view.prevClose, mixHex(BG, colour, 0.7), { x: 236, y: 30, w: 136, h: 118 }),
         dots(view.dots),
       );
       break;
