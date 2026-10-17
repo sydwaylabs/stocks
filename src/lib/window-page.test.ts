@@ -79,7 +79,9 @@ describe("detail data", () => {
       "Day range", "52-week range", "Previous close", "Market cap", "Volume", "P/E (TTM)", "EPS (TTM)", "Dividend yield", "Beta", "Next earnings", "Type",
     ]);
     expect(d.rows.find((r) => r.label === "Dividend yield")?.value).toBe("0.44%");
-    expect(d.rows.find((r) => r.label === "Beta")?.hint).toMatch(/swings compared with the market/);
+    expect(d.rows.find((r) => r.label === "Beta")?.hint).toMatch(/Swings vs the market/);
+    // One short line each: none is a paragraph.
+    for (const r of d.rows) if (r.hint) expect(r.hint.length).toBeLessThanOrEqual(50);
     expect(d.rows.find((r) => r.label === "Type")?.hint).toBeUndefined();
     expect(d.company).toBe("Technology · US");
     expect(d.website).toBe("https://www.apple.com/");

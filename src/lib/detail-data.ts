@@ -80,18 +80,18 @@ export function buildDetail(snap: Snapshot): DetailData {
   };
 }
 
-/** What each figure means, for someone who has not met the term. Shown on hover in the window. */
+/** What each figure means, in one short line. Shown on a resting hover in the window. */
 export const HINTS: Record<string, string> = {
-  "Day range": "The lowest and highest price today.",
-  "52-week range": "The lowest and highest price over the past year.",
-  "Previous close": "The price at yesterday's close. Today's change is measured from it.",
-  "Market cap": "What the whole company is worth: the share price times the number of shares.",
-  Volume: "How many shares (or coins) have traded today.",
-  "P/E (TTM)": "Price divided by the last 12 months' earnings per share. Higher means paying more for each dollar of profit.",
-  "EPS (TTM)": "The company's profit per share over the last 12 months.",
-  "Dividend yield": "A year's dividends as a percentage of the share price.",
-  Beta: "How much it swings compared with the market. 1 moves with it, above 1 swings more, below 1 is steadier. Based on past prices.",
-  "Next earnings": "When the company next reports its results. Prices often move sharply around this date.",
+  "Day range": "Today's low and high.",
+  "52-week range": "The low and high over the past year.",
+  "Previous close": "Yesterday's closing price.",
+  "Market cap": "The company's total value: price × shares.",
+  Volume: "Shares traded today.",
+  "P/E (TTM)": "Price ÷ the past year's earnings per share.",
+  "EPS (TTM)": "Profit per share over the past year.",
+  "Dividend yield": "A year's dividends as a % of the price.",
+  Beta: "Swings vs the market: 1 = same, higher = more.",
+  "Next earnings": "When results are next reported.",
 };
 
 const HOURS = { bmo: "before open", amc: "after close", dmh: "during market hours" } as const;

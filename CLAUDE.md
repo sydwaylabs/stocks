@@ -73,7 +73,8 @@ Every action: hold opens the window, and an empty key opens search on any press.
   30 days, raster images only, sniffed by their bytes) and served to the window at
   `/asset/logo?symbol=…` — a route added to `src/window-host.ts` (`serveAsset`), worth harvesting
   into the kit. The page never loads anything from the internet.
-- **Tooltips**: `src/lib/page-tip.ts` is the kit's page-tip pattern; anything with `data-hint`
+- **Tooltips**: `src/lib/page-tip.ts` is the kit's page-tip pattern, plus a 600 ms rest before a
+  tip shows and instant neighbours once one is up (worth harvesting into the kit); anything with `data-hint`
   gets the one page tooltip (stat labels, change pills, the trash button). Hint texts live in
   `HINTS` in `src/lib/detail-data.ts`.
 - **Watchlist key dots** sit on the bottom edge (y=135), matching Timekeeper's world clock.

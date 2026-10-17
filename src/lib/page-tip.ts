@@ -31,7 +31,17 @@ export const TIP_SCRIPT = `
   tip.className = "page-tip";
   tip.setAttribute("role", "tooltip");
   var shownFor = null;
-  function hide() { shownFor = null; tip.classList.remove("on"); }
+  /* A tip waits for the pointer to rest, so passing over things does not flash them up; once one is
+     showing, its neighbours follow at once, as macOS tooltips do, until the pointer has been off
+     anything with a hint for a moment. */
+  var REST_MS = 600, WARM_MS = 400;
+  var pending = 0, lastHidden = 0;
+  function hide() {
+    clearTimeout(pending);
+    if (shownFor) lastHidden = Date.now();
+    shownFor = null;
+    tip.classList.remove("on");
+  }
   function show(target) {
     if (!tip.parentNode) document.body.appendChild(tip);
     shownFor = target;
@@ -47,7 +57,11 @@ export const TIP_SCRIPT = `
   document.addEventListener("mouseover", function (event) {
     var target = event.target && event.target.closest ? event.target.closest("[data-hint]") : null;
     if (target === shownFor) return;
-    if (target && target.getAttribute("data-hint")) show(target); else hide();
+    var warm = shownFor !== null || Date.now() - lastHidden < WARM_MS;
+    hide();
+    if (!target || !target.getAttribute("data-hint")) return;
+    if (warm) show(target);
+    else pending = setTimeout(function () { show(target); }, REST_MS);
   });
   document.addEventListener("mousedown", hide);
   window.addEventListener("blur", hide);
