@@ -30,6 +30,11 @@ Finnhub key handling through `src/services.ts`, and one inspector script (`ui/st
   the detail view stays hidden. Messages `focus`, `showOnKey` and `remove` are checked against the
   list. Rows are kept by symbol and refreshed in place, so the poll never rebuilds the open one.
   Every row opens closed (the user's call); the keyboard cursor starts on the key's row.
+  Adding is a popover from + (Timekeeper's world-clock pattern), over the board; an empty key's
+  press opens the board with it open (`openAdd`). The full-screen search view is now only for
+  Ticker and Price Alert.
+  Note from Timekeeper: WebKit draws the system checkbox as a bare tick with no box on the dark
+  ground — use a drawn control there.
   Reordering follows Timekeeper's card drag (lift, others slide, settle); an open row closes when
   a drag starts so slots are even. `reorder` is accepted only as a permutation of the list.
   Search adds and stays open. Note: an offscreen WKWebView does not advance CSS animations, so a

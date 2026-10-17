@@ -24,6 +24,8 @@ export type WindowInit = {
   canChange?: boolean;
   /** A Price Alert's window: show its rule beside the chart, editable, and let the chart pick a price. */
   alert?: boolean;
+  /** A board that opens with its add popover already open — an empty watchlist's press. */
+  openAdd?: boolean;
 };
 
 export const WINDOW_WIDTH = 640;
@@ -239,6 +241,29 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .yguide { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(250,178,25,.55); pointer-events: none; }
 .yguide span { position: absolute; right: 6px; top: -9px; font-size: 10.5px; color: #fab219; background: var(--card); padding: 0 4px; border-radius: 3px; }
 
+/* Adding to a watchlist, as Timekeeper's world clock adds a place: a popover from the + button,
+   over the board, which stays where it is and fills in behind it. */
+.popover { position: absolute; z-index: 30; right: 14px; width: 320px; background: #2b2b2b; border: 1px solid var(--card-line);
+  border-radius: 10px; padding: 10px 12px 12px; box-shadow: 0 10px 28px rgba(0,0,0,.5); }
+.popover::before, .popover::after { content: ""; position: absolute; right: var(--arrow, 14px); width: 0; height: 0;
+  border: 7px solid transparent; border-top: 0; }
+.popover::before { top: -8px; border-bottom: 8px solid var(--card-line); }
+.popover::after { top: -7px; border-bottom: 8px solid #2b2b2b; }
+.popover .title { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-faint); margin-bottom: 8px; }
+.popover input { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; color: var(--fg); background: #1d1d1d;
+  border: 1px solid var(--card-line); border-radius: 7px; height: 30px; padding: 0 9px; }
+.pop-results { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.pop-result { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 7px; cursor: pointer; border: 1px solid transparent; min-width: 0; }
+.pop-result:hover { background: var(--hover); }
+.pop-result.on { background: var(--kbd); border-color: var(--card-line); }
+.pop-result .s { font-size: 12.5px; font-weight: 600; flex: none; }
+.pop-result .n { font-size: 12px; color: var(--fg-dim); flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pop-result .x { font-size: 10.5px; color: var(--fg-faint); flex: none; }
+.pop-note { font-size: 11.5px; color: var(--fg-faint); margin: 8px 2px 0; min-height: 15px; }
+.pop-note.good { color: var(--good); }
+.pop-note.bad { color: var(--slow); }
+#add.on { background: var(--kbd); color: var(--fg); }
+
 /* One tooltip for the page (patterns/page-tip): the native host shows no title attribute, and a
    tip on the element itself is clipped by the scrolling board. Hints are sentences, so they wrap. */
 ${TIP_CSS}
@@ -274,6 +299,12 @@ ${TIP_CSS}
 </div>
 
 <main id="board" hidden><div class="wl" id="cards"></div></main>
+<div class="popover" id="add-sheet" role="dialog" aria-label="Add symbol" hidden>
+  <div class="title">Add symbol</div>
+  <input id="add-q" type="text" placeholder="Company, fund, ETF or crypto" autocomplete="off" spellcheck="false" aria-label="Search">
+  <ul class="pop-results" id="add-results" role="listbox"></ul>
+  <p class="pop-note" id="add-note"></p>
+</div>
 
 <main id="detail" hidden>
   <div class="hero">
@@ -425,6 +456,9 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
         height = $("bar").offsetHeight + view.scrollHeight + $("footer").offsetHeight;
         view.style.flex = "";
       }
+      /* An open popover floats over the board; the window grows only if it would run off the bottom. */
+      var pop = $("add-sheet");
+      if (!pop.hidden) height = Math.max(height, pop.offsetTop + pop.offsetHeight + 12);
       if (window.__nativeHost) {
         try { window.webkit.messageHandlers.resize.postMessage({ height: height }); } catch (e) { /* older host */ }
       } else {
@@ -497,6 +531,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       if (firstBoard) {
         firstBoard = false;
         cursor = Math.max(0, boardCards.findIndex(function (c) { return c.symbol === boardOnKey; }));
+        if (INIT.openAdd) setTimeout(function () { toggleAdd(true); }, 0);
       }
       renderBoard();
     }).catch(function () {
@@ -732,6 +767,110 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (openSym === sym) closeRow();
     else openRow(sym);
   }
+
+  /* ---- adding, in a popover over the board ---- */
+
+  var addResults = [];
+  var addSel = 0;
+  var addSeq = 0;
+  var addTimer = 0;
+
+  function addOpen() { return !$("add-sheet").hidden; }
+
+  function toggleAdd(forceOpen) {
+    var pop = $("add-sheet");
+    var opening = forceOpen || pop.hidden;
+    pop.hidden = !opening;
+    $("add").classList.toggle("on", opening);
+    if (opening) {
+      /* Hang it from the + button, its arrow pointing at the middle of it. */
+      var b = $("add").getBoundingClientRect();
+      pop.style.top = (b.bottom + 9) + "px";
+      pop.style.right = Math.max(8, window.innerWidth - b.right) + "px";
+      pop.style.setProperty("--arrow", Math.max(8, b.width / 2 - 7) + "px");
+      $("add-note").textContent = "";
+      $("add-note").className = "pop-note";
+      var q = $("add-q");
+      q.value = "";
+      addResults = [];
+      renderAddResults();
+      q.focus();
+    }
+    fit();
+  }
+
+  function closeAdd() { if (addOpen()) toggleAdd(false); }
+
+  function runAddSearch() {
+    var q = $("add-q").value.trim();
+    var seq = ++addSeq;
+    if (!q) { addResults = []; renderAddResults(); return; }
+    post("search", { query: q }).then(function (reply) {
+      if (seq !== addSeq) return;
+      addResults = ((reply && reply.results) || []).slice(0, 8);
+      addSel = 0;
+      renderAddResults(reply && reply.message);
+    });
+  }
+
+  function renderAddResults(message) {
+    var list = $("add-results");
+    list.replaceChildren();
+    addResults.forEach(function (r, i) {
+      var li = el("li", "pop-result" + (i === addSel ? " on" : ""));
+      li.setAttribute("role", "option");
+      li.append(el("span", "s", r.symbol), el("span", "n", r.name), el("span", "x", [r.typeLabel || r.type, r.exchange].filter(Boolean).join(" · ")));
+      li.addEventListener("click", function () { addPick(i); });
+      list.append(li);
+    });
+    if (message) { $("add-note").textContent = message; $("add-note").className = "pop-note bad"; }
+    fit();
+  }
+
+  function addPick(i) {
+    var r = addResults[i];
+    if (!r) return;
+    post("select", { symbol: r.symbol }).then(function (reply) {
+      var note = $("add-note");
+      if (!reply || !reply.ok) {
+        note.textContent = (reply && reply.message) || "Could not add that.";
+        note.className = "pop-note bad";
+        return;
+      }
+      note.textContent = reply.message || ("Added " + r.symbol);
+      note.className = "pop-note good";
+      $("add-q").value = "";
+      addResults = [];
+      renderAddResults();
+      $("add-q").focus();
+      loadBoard();
+    });
+  }
+
+  $("add-q").addEventListener("input", function () {
+    clearTimeout(addTimer);
+    addTimer = setTimeout(runAddSearch, 250);
+  });
+  /* The popover's keys are its own: the board's shortcuts stay out of the search box. */
+  $("add-q").addEventListener("keydown", function (e) {
+    e.stopPropagation();
+    if (e.key === "Escape") { e.preventDefault(); closeAdd(); return; }
+    if ((e.key === "ArrowDown" || e.key === "ArrowUp") && addResults.length) {
+      e.preventDefault();
+      addSel = (addSel + (e.key === "ArrowDown" ? 1 : addResults.length - 1)) % addResults.length;
+      renderAddResults();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      clearTimeout(addTimer);
+      addPick(addSel);
+    }
+  });
+  /* A click anywhere else closes it, as a macOS popover does. */
+  document.addEventListener("pointerdown", function (e) {
+    if (!addOpen()) return;
+    if ($("add-sheet").contains(e.target) || $("add").contains(e.target)) return;
+    closeAdd();
+  });
 
   /* ---- reordering: drag a row, or ⌥↑ / ⌥↓ on the highlighted one ---- */
 
@@ -1340,7 +1479,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   $("back").append(chevronLeftIcon());
   $("back").addEventListener("click", function () { show("board"); });
   $("add").append(plusIcon());
-  $("add").addEventListener("click", function () { show("search"); });
+  $("add").addEventListener("click", function (e) { e.stopPropagation(); toggleAdd(); });
   Array.prototype.forEach.call($("ranges").children, function (b) {
     b.addEventListener("click", function () { selectRange(b.getAttribute("data-range")); });
   });
@@ -1348,6 +1487,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   $("d-web").addEventListener("click", function () { if (website) post("openLink", { url: website }); });
 
   document.addEventListener("keydown", function (e) {
+    /* An open popover takes Esc first, wherever the focus is. */
+    if (e.key === "Escape" && addOpen()) { e.preventDefault(); closeAdd(); return; }
     /* Typing in the alert's form is typing: no single-key shortcuts while a field has the keys. */
     var t = e.target;
     var typing = t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA") && t.id !== "q";
@@ -1382,7 +1523,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (mode === "board") {
-      if (e.key === "a") { e.preventDefault(); show("search"); }
+      if (e.key === "a") { e.preventDefault(); toggleAdd(true); }
       if (e.key === "c") { e.preventDefault(); toggleChangeAs(); }
       if (e.key === "r") { loadBoard(); if (openSym) { rangeCharts = {}; loadDetail(); if (range !== "1d") selectRange(range); } }
       if ((e.key === "ArrowDown" || e.key === "ArrowUp") && boardCards.length) {

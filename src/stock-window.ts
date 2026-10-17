@@ -34,6 +34,8 @@ export type StockWindowOptions = {
   onSelect: (result: SearchResult) => Promise<void | { ok?: boolean; message?: string }>;
   /** Open in search even if the key has a symbol. */
   startIn?: "search";
+  /** A board opening straight into its add popover. */
+  openAdd?: boolean;
   /** Search adds to a list and stays open, rather than assigning one and closing. */
   adding?: boolean;
   /** Offer "Change symbol" in the detail view (default true). */
@@ -215,6 +217,7 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
           adding: options.adding,
           canChange: options.canChange,
           alert: !!options.alert,
+          openAdd: options.openAdd,
         }),
         hostArgs: options.unbidden ? ["--no-focus"] : undefined,
         onMessage,

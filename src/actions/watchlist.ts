@@ -223,11 +223,12 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
     void openStockWindow({
       quotes,
       symbol: () => instance.list[instance.index] ?? "",
-      startIn: mode === "add" ? "search" : undefined,
-      // Search from the board adds too, so the window adds in either case.
+      // Always the board; adding opens it with its add popover already open, so the list being
+      // built is in view behind the search.
+      openAdd: mode === "add",
       adding: true,
       canChange: false,
-      board: mode === "detail" ? {
+      board: {
         list: () => instance.list,
         remove: async (symbol) => {
           const symbols = instance.list.filter((s) => s !== symbol).join(", ");
@@ -257,7 +258,7 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
           instance.pausedUntil = Date.now() + PRESS_PAUSE_MS;
           await this.show(instance);
         },
-      } : undefined,
+      },
       onSelect: async (result) => {
         const { symbols, added } = addSymbol(instance.settings.symbols, result.symbol);
         if (!added) {
