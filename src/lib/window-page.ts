@@ -142,31 +142,42 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .notice { color: var(--fg-dim); padding: 30px 10px; text-align: center; }
 .added { color: var(--good); font-size: 12px; margin: 8px 2px 0; min-height: 16px; }
 
-/* board: a watchlist's cards, three across, after Timekeeper's world clock — a glance each, the
-   full view a click away. Name, then the price large as the thing the eye comes for, then the
-   day's move and its line. */
-.board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-content: start; }
-.bcard { position: relative; min-width: 0; height: 92px; box-sizing: border-box; padding: 10px 12px 9px;
-  display: flex; flex-direction: column; justify-content: space-between;
-  background: var(--card); border: 1px solid var(--card-line); border-radius: 10px; cursor: pointer;
-  transition: border-color .1s ease; }
-.bcard:hover { border-color: #6a6a70; }
-.bhead { display: flex; align-items: baseline; gap: 6px; min-width: 0; padding-right: 18px; }
-.bsym { font-size: 13.5px; font-weight: 600; white-space: nowrap; }
-.bname { font-size: 11.5px; color: var(--fg-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-/* Which card the key is showing: a fact, in white, beside the name — not the up-green. */
-.onkey { flex: none; font-size: 9.5px; font-weight: 600; color: var(--fg); background: var(--kbd); border-radius: 4px; padding: 1px 5px; letter-spacing: .02em; }
-.bprice { font-size: 24px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bprice .unit { font-size: 11px; font-weight: 500; color: var(--fg-dim); margin-left: 3px; letter-spacing: 0; }
-.bmeta { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; }
-.bmeta svg { margin-left: auto; flex: none; display: block; }
-.berr { font-size: 13px; color: var(--slow); }
-/* Remove, in the corner while the card is under the pointer. */
-.bx { display: none; position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; padding: 0; border-radius: 6px;
-  align-items: center; justify-content: center; color: var(--fg-dim); background: var(--card); font-size: 14px; line-height: 1; }
-.bcard:hover .bx { display: inline-flex; }
-.bx:hover { color: var(--fg); border-color: #6a6a70; }
-.board-empty { grid-column: 1 / -1; color: var(--fg-dim); text-align: center; padding: 40px 10px; }
+/* board: a watchlist as rows, one opening in place to the full chart and stats — so the other
+   symbols stay in view and comparing is moving down the list, not going in and out of a page. */
+.wl { display: flex; flex-direction: column; gap: 6px; }
+.wrow { background: var(--card); border: 1px solid var(--card-line); border-radius: 10px; transition: border-color .1s ease; }
+.wrow:hover, .wrow.cursor { border-color: #6a6a70; }
+.wrow.open { border-color: #6a6a70; }
+.whead { display: grid; grid-template-columns: 30px minmax(0, 1fr) 76px 104px 92px; align-items: center; column-gap: 12px;
+  height: 46px; padding: 0 12px; cursor: pointer; }
+.wmark { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(160deg, #4a4a50, #2c2c30); font-size: 14px; font-weight: 700; color: var(--fg); }
+.wwho { min-width: 0; display: flex; flex-direction: column; justify-content: center; line-height: 16px; }
+.wsym { font-size: 13.5px; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.wname { font-size: 11.5px; color: var(--fg-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Which row the key is showing: a fact, in white, beside the symbol — not the up-green. */
+.onkey { flex: none; font-size: 9px; font-weight: 600; color: var(--fg); background: var(--kbd); border-radius: 4px; padding: 1px 5px; letter-spacing: .03em; }
+.wspark { display: block; }
+.wprice { text-align: right; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wprice .unit { font-size: 10.5px; font-weight: 500; color: var(--fg-dim); margin-left: 3px; }
+/* The move as a pill, coloured by direction — the one place colour sits in a closed row. */
+.wmove { justify-self: end; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; padding: 3px 8px; border-radius: 6px; background: var(--kbd); white-space: nowrap; }
+.wmove.up { background: rgba(41,189,80,.16); }
+.wmove.down { background: rgba(239,75,75,.16); }
+.werr { grid-column: 3 / -1; justify-self: end; color: var(--slow); font-size: 12.5px; }
+.wpanel { padding: 2px 12px 12px; border-top: 1px solid var(--line); }
+.wpanel .chart-head { margin-top: 10px; }
+.wacts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+.wacts button { font-size: 12px; padding: 3px 10px; }
+.wacts button.quiet { background: none; border-color: transparent; color: var(--fg-dim); }
+.wacts button.quiet:hover { color: var(--fg); }
+/* In a row, the stats sit four across and label-over-value, so a full set is three short lines. */
+.wpanel .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 16px; margin-top: 10px; }
+.wpanel .stat { flex-direction: column; justify-content: flex-start; gap: 1px; padding: 6px 0; }
+.wpanel .stat dt { font-size: 11px; }
+.wpanel .stat dd { text-align: left; font-size: 12.5px; }
+.wpanel .meta { margin-top: 6px; }
+.board-empty { color: var(--fg-dim); text-align: center; padding: 40px 10px; }
 
 /* search */
 .search-box { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; color: var(--fg); background: var(--card); border: 1px solid var(--card-line); border-radius: 8px; padding: 9px 11px; }
@@ -195,7 +206,7 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
   <button id="change" hidden>Change symbol…</button>
 </div>
 
-<main id="board" hidden><div class="board" id="cards"></div></main>
+<main id="board" hidden><div class="wl" id="cards"></div></main>
 
 <main id="detail" hidden>
   <div class="hero">
@@ -211,6 +222,9 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
       <div class="move" id="d-move"></div>
     </div>
   </div>
+  <!-- The chart, stats and source line. On a watchlist board this whole block moves into the
+       open row; elsewhere it stays here under the price. -->
+  <div id="d-body">
   <div class="chart-head">
     <div class="seg" id="ranges" role="tablist" aria-label="Chart range">
       <button data-range="1d" class="on" role="tab">1D</button><button data-range="5d" role="tab">5D</button><button data-range="1mo" role="tab">1M</button><button data-range="6mo" role="tab">6M</button><button data-range="ytd" role="tab">YTD</button><button data-range="1y" role="tab">1Y</button>
@@ -225,6 +239,7 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
   <dl class="stats" id="d-rows"></dl>
   <p class="note" id="d-note" hidden></p>
   <p class="meta" id="d-meta"></p>
+  </div>
 </main>
 <main id="d-error" class="notice" hidden></main>
 
@@ -340,9 +355,9 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     $("add").hidden = !onBoard || next !== "board";
     clearInterval(poll);
     if (next === "board") {
-      setFooter([["click", "details"], ["a", "add"], ["esc", "close"]]);
+      setFooter([["↑↓", "move"], ["↵", "open"], ["1–6", "range"], ["a", "add"], ["esc", "close"]]);
       loadBoard();
-      poll = setInterval(loadBoard, 60000);
+      poll = setInterval(function () { loadBoard(); if (openSym) loadDetail(); }, 30000);
     } else if (next === "search") {
       $("chip").textContent = INIT.adding ? "Add to watchlist" : symbol ? "Change " + symbol : "Choose a symbol";
       setFooter([["↑↓", "choose"], ["↵", INIT.adding ? "add" : "pick"], ["esc", onBoard || !openedForSearch ? "back" : INIT.adding ? "done" : "close"]]);
@@ -364,18 +379,44 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
 
   /* ---- board ---- */
 
+  /*
+   * A watchlist's rows. One at a time opens in place: the detail view's chart, stats and source
+   * line (#d-body) move into it, so the chart, its ranges and hover work exactly as they do on a
+   * Ticker's window. Rows are kept by symbol and updated in place, so the minute's refresh does not
+   * rebuild the open one under the pointer.
+   */
+  var boardCards = [];
+  var boardOnKey = "";
+  var openSym = "";
+  var cursor = 0;
+  var rowEls = {};
+  var boardOrder = "";
+  var firstBoard = true;
+
   function loadBoard() {
     return post("board").then(function (reply) {
       if (mode !== "board") return;
-      renderBoard((reply && reply.cards) || [], reply && reply.onKey, (reply && reply.max) || 12);
+      boardCards = (reply && reply.cards) || [];
+      boardOnKey = (reply && reply.onKey) || "";
+      $("chip").textContent = "Watchlist · " + boardCards.length + " of " + ((reply && reply.max) || 12);
+      /* On first open, the row the key is showing starts open: you land on what you were looking at. */
+      if (firstBoard) {
+        firstBoard = false;
+        var start = boardCards.findIndex(function (c) { return c.symbol === boardOnKey; });
+        cursor = Math.max(0, start);
+        renderBoard();
+        if (start >= 0 && !boardCards[start].error) openRow(boardOnKey);
+        return;
+      }
+      renderBoard();
     }).catch(function () {
       if (mode === "board") $("cards").replaceChildren(el("p", "board-empty", "The plugin is not responding."));
     });
   }
 
   function sparkSvg(c) {
-    var W = 64, H = 22;
-    var svg = svgEl("svg", { width: W, height: H, viewBox: "0 0 " + W + " " + H, "aria-hidden": "true" });
+    var W = 76, H = 26;
+    var svg = svgEl("svg", { class: "wspark", width: W, height: H, viewBox: "0 0 " + W + " " + H, "aria-hidden": "true" });
     if (!c.points || c.points.length < 2) return svg;
     var values = c.prevClose != null ? c.points.concat([c.prevClose]) : c.points;
     var lo = Math.min.apply(null, values), hi = Math.max.apply(null, values), span = hi - lo || 1;
@@ -387,65 +428,155 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     return svg;
   }
 
-  function renderBoard(cards, onKey, max) {
-    $("chip").textContent = "Watchlist · " + cards.length + " of " + max;
-    var grid = $("cards");
-    grid.replaceChildren();
-    if (!cards.length) {
-      grid.append(el("p", "board-empty", "No symbols yet. Add some to fill the board."));
+  /* The closed row's line: mark, symbol and name, the day's line, price, move. */
+  function fillHead(head, c) {
+    var who = el("div", "wwho");
+    var sym = el("div", "wsym", c.symbol);
+    if (c.symbol === boardOnKey && boardCards.length > 1) sym.append(el("span", "onkey", "ON KEY"));
+    who.append(sym);
+    if (c.name && c.name !== c.symbol) who.append(el("div", "wname", c.name));
+    var parts = [el("div", "wmark", initialOf(c.name, c.symbol)), who];
+    if (c.error) {
+      parts.push(el("div", "werr", c.error));
+    } else {
+      var price = el("div", "wprice", c.price);
+      if (c.currency) price.append(el("span", "unit", c.currency));
+      parts.push(sparkSvg(c), price, el("div", "wmove " + c.trend, c.changePct || c.change || ""));
+    }
+    head.replaceChildren.apply(head, parts);
+  }
+
+  function renderBoard() {
+    var list = $("cards");
+    var order = boardCards.map(function (c) { return c.symbol; }).join(",");
+    if (!boardCards.length) {
+      rowEls = {};
+      boardOrder = "";
+      parkBody();
+      list.replaceChildren(el("p", "board-empty", "No symbols yet. Add some to fill the board."));
       fit();
       return;
     }
-    cards.forEach(function (c) {
-      var card = el("div", "bcard");
-      card.setAttribute("role", "button");
-      card.setAttribute("aria-label", c.symbol + " details");
-
-      var head = el("div", "bhead");
-      head.append(el("span", "bsym", c.symbol));
-      if (c.name && c.name !== c.symbol) head.append(el("span", "bname", c.name));
-      if (c.symbol === onKey && cards.length > 1) head.append(el("span", "onkey", "ON KEY"));
-      card.append(head);
-
-      if (c.error) {
-        card.append(el("div", "berr", c.error), el("div", "bmeta"));
-      } else {
-        var price = el("div", "bprice", c.price);
-        if (c.currency) price.append(el("span", "unit", c.currency));
-        var meta = el("div", "bmeta");
-        meta.append(el("span", c.trend, [c.change, c.changePct ? "(" + c.changePct + ")" : ""].join(" ").trim()), sparkSvg(c));
-        card.append(price, meta);
-      }
-
-      var x = el("button", "bx", "×");
-      x.setAttribute("aria-label", "Remove " + c.symbol);
-      x.addEventListener("click", function (e) {
-        e.stopPropagation();
-        post("remove", { symbol: c.symbol }).then(loadBoard);
-      });
-      card.append(x);
-
-      card.addEventListener("click", function () { openCard(c.symbol); });
-      grid.append(card);
+    /* Same symbols in the same order: refresh each row's line in place, leaving the open one open. */
+    if (order === boardOrder) {
+      boardCards.forEach(function (c) { fillHead(rowEls[c.symbol].head, c); });
+      markCursor();
+      return;
+    }
+    boardOrder = order;
+    rowEls = {};
+    parkBody();
+    list.replaceChildren();
+    boardCards.forEach(function (c, i) {
+      var row = el("div", "wrow");
+      var head = el("div", "whead");
+      head.setAttribute("role", "button");
+      head.setAttribute("aria-expanded", "false");
+      head.addEventListener("click", function () { cursor = i; toggleRow(c.symbol); });
+      fillHead(head, c);
+      row.append(head);
+      list.append(row);
+      rowEls[c.symbol] = { row: row, head: head };
     });
+    if (openSym && rowEls[openSym]) attachBody(openSym);
+    else openSym = "";
+    if (cursor >= boardCards.length) cursor = boardCards.length - 1;
+    markCursor();
     fit();
   }
 
-  function openCard(sym) {
+  function markCursor() {
+    boardCards.forEach(function (c, i) {
+      var r = rowEls[c.symbol];
+      if (r) r.row.classList.toggle("cursor", i === cursor);
+    });
+  }
+
+  /* Puts the chart block back in the hidden detail view, out of any row. */
+  function parkBody() {
+    var body = $("d-body");
+    if (body.parentNode !== $("detail")) $("detail").append(body);
+    var acts = $("wacts");
+    if (acts) acts.remove();
+  }
+
+  function attachBody(sym) {
+    var r = rowEls[sym];
+    if (!r) return;
+    r.row.classList.add("open");
+    r.head.setAttribute("aria-expanded", "true");
+    var panel = el("div", "wpanel");
+    panel.append($("d-body"));
+    var acts = el("div", "wacts");
+    acts.id = "wacts";
+    var remove = el("button", "quiet", "Remove");
+    remove.addEventListener("click", function () {
+      post("remove", { symbol: sym }).then(function () { closeRow(); loadBoard(); });
+    });
+    acts.append(remove);
+    if (sym !== boardOnKey) {
+      var onKey = el("button", "", "Show on key");
+      onKey.addEventListener("click", function () {
+        post("showOnKey", { symbol: sym }).then(function () { boardOnKey = sym; renderBoardHeads(); acts.removeChild(onKey); });
+      });
+      acts.append(onKey);
+    }
+    panel.append(acts);
+    r.row.append(panel);
+  }
+
+  function renderBoardHeads() {
+    boardCards.forEach(function (c) { if (rowEls[c.symbol]) fillHead(rowEls[c.symbol].head, c); });
+  }
+
+  function closeRow() {
+    if (!openSym) return;
+    var r = rowEls[openSym];
+    parkBody();
+    if (r) {
+      r.row.classList.remove("open");
+      r.head.setAttribute("aria-expanded", "false");
+      var panel = r.row.querySelector(".wpanel");
+      if (panel) panel.remove();
+    }
+    openSym = "";
+    fit();
+  }
+
+  function openRow(sym) {
+    var card = boardCards.find(function (c) { return c.symbol === sym; });
+    if (!card || card.error) return;
+    closeRow();
     post("focus", { symbol: sym }).then(function (reply) {
-      if (!reply || !reply.ok) { loadBoard(); return; }
+      if (!reply || !reply.ok || mode !== "board") return;
+      openSym = sym;
       symbol = sym;
       rangeCharts = {};
       chart1d = null;
-      show("detail");
+      drawnKey = "";
+      /* Clear the last symbol's numbers so they never show under this one's name. */
+      $("d-chart").replaceChildren();
+      $("d-rows").replaceChildren();
+      $("d-meta").textContent = "";
+      attachBody(sym);
+      /* Today's chart arrives with the quote; a longer range is asked for now. */
+      if (range === "1d") chartNotice("Loading…");
+      else selectRange(range);
+      loadDetail();
+      fit();
     });
+  }
+
+  function toggleRow(sym) {
+    if (openSym === sym) closeRow();
+    else openRow(sym);
   }
 
   /* ---- detail ---- */
 
   function loadDetail() {
     return post("snapshot").then(function (reply) {
-      if (mode !== "detail") return;
+      if (mode !== "detail" && !(mode === "board" && openSym)) return;
       if (reply && reply.detail) renderDetail(reply.detail);
       else showDetailError((reply && reply.message) || "No quote available.");
     }).catch(function () { showDetailError("The plugin is not responding."); });
@@ -458,6 +589,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   }
 
   function showDetailError(message) {
+    /* In an open row, say it where the chart would be, and keep the board. */
+    if (mode === "board") { chartNotice(message); return; }
     $("detail").hidden = true;
     var box = $("d-error");
     box.hidden = false;
@@ -467,10 +600,13 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
 
   function renderDetail(d) {
     $("d-error").hidden = true;
-    $("detail").hidden = false;
+    /* On a board the detail view stays hidden: only its chart block is shown, inside the open row. */
+    $("detail").hidden = mode === "board";
     symbol = d.symbol;
-    $("chip").textContent = d.exchange ? d.symbol + " · " + d.exchange : d.symbol;
-    document.title = INIT.windowTitle.split(" — ")[0] + " — " + d.symbol;
+    if (!onBoard) {
+      $("chip").textContent = d.exchange ? d.symbol + " · " + d.exchange : d.symbol;
+      document.title = INIT.windowTitle.split(" — ")[0] + " — " + d.symbol;
+    }
     $("d-name").textContent = d.name;
     $("d-price").textContent = d.price;
     $("d-ccy").textContent = d.currency || "";
@@ -820,7 +956,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") {
       e.preventDefault();
-      if (onBoard && mode !== "board") show("board");
+      if (onBoard && mode === "board" && openSym) closeRow();
+      else if (onBoard && mode !== "board") show("board");
       else if (mode === "search" && !openedForSearch) show("detail");
       else post("close");
       return;
@@ -841,7 +978,17 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (mode === "board") {
       if (e.key === "a") { e.preventDefault(); show("search"); }
-      if (e.key === "r") loadBoard();
+      if (e.key === "r") { loadBoard(); if (openSym) { rangeCharts = {}; loadDetail(); if (range !== "1d") selectRange(range); } }
+      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && boardCards.length) {
+        e.preventDefault();
+        cursor = (cursor + (e.key === "ArrowDown" ? 1 : boardCards.length - 1)) % boardCards.length;
+        markCursor();
+        var r = rowEls[boardCards[cursor].symbol];
+        if (r) r.row.scrollIntoView({ block: "nearest" });
+      }
+      if (e.key === "Enter" && boardCards[cursor]) { e.preventDefault(); toggleRow(boardCards[cursor].symbol); }
+      var d = ["1", "2", "3", "4", "5", "6"].indexOf(e.key);
+      if (d >= 0 && openSym) selectRange(["1d", "5d", "1mo", "6mo", "ytd", "1y"][d]);
       return;
     }
     if (e.key === "r") { rangeCharts = {}; loadDetail(); if (range !== "1d") selectRange(range); }

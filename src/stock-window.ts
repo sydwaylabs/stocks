@@ -44,6 +44,8 @@ export type StockWindowOptions = {
   board?: {
     list: () => string[];
     remove: (symbol: string) => Promise<void>;
+    /** Makes the key show this symbol. */
+    showOnKey: (symbol: string) => Promise<void>;
   };
   onOpen: (close: () => void) => void;
 };
@@ -85,6 +87,11 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
       case "focus": {
         if (!board || typeof message.symbol !== "string" || !board.list().includes(message.symbol)) return { ok: false };
         viewing = message.symbol;
+        return { ok: true };
+      }
+      case "showOnKey": {
+        if (!board || typeof message.symbol !== "string" || !board.list().includes(message.symbol)) return { ok: false };
+        await board.showOnKey(message.symbol);
         return { ok: true };
       }
       case "remove": {

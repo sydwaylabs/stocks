@@ -233,6 +233,14 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
           this.schedule(id);
           await this.show(instance);
         },
+        showOnKey: async (symbol) => {
+          const at = instance.list.indexOf(symbol);
+          if (at < 0) return;
+          instance.index = at;
+          // Hold it there a while, as a press does, so rotation does not move straight off it.
+          instance.pausedUntil = Date.now() + PRESS_PAUSE_MS;
+          await this.show(instance);
+        },
       } : undefined,
       onSelect: async (result) => {
         const { symbols, added } = addSymbol(instance.settings.symbols, result.symbol);

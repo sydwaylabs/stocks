@@ -10,7 +10,7 @@ A Stream Deck plugin by Sydway Labs, for macOS 12 or later and Stream Deck 6.9 o
 |---|---|---|
 | **Ticker** (symbol set) | Refresh now | Open the detail window: a chart (1D, 5D, 1M, 6M, YTD, 1Y), day and 52-week ranges, volume, market cap, and **Change symbol** |
 | **Ticker** (empty key) | Open search | Open search |
-| **Watchlist** | Next symbol (pauses auto-rotation for a minute) | The board: a card per symbol; click one for its detail |
+| **Watchlist** | Next symbol (pauses auto-rotation for a minute) | The board: a row per symbol, one opening in place to its chart |
 | **Watchlist** (empty key) | Search, adding to the list | Search, adding to the list |
 | **Price Alert** (fired) | Clear the alert | Detail window |
 | **Price Alert** (watching) | Check now | Detail window |
@@ -18,9 +18,11 @@ A Stream Deck plugin by Sydway Labs, for macOS 12 or later and Stream Deck 6.9 o
 
 **Watchlist** keeps up to 12 symbols on one key, with a dot for each across the top. Type them
 into the key's settings or add them with search, which stays open so you can add several. It can
-also move on by itself every 5, 10 or 30 seconds. Holding it opens the board — a card for every
-symbol with its price, today's move and the day's line, the one on the key marked — where a click
-opens a symbol's full detail, **Add symbol…** adds more, and × on a card removes it.
+also move on by itself every 5, 10 or 30 seconds. Holding it opens the board: a row for every
+symbol with the day's line, its price and today's move, the one on the key marked and already
+open. A click (or ↑↓ and Return) opens a row in place to the full chart — ranges, hover, price
+scale — and the key stats, with **Show on key** and **Remove**; the other rows stay in view.
+**Add symbol…** adds more.
 
 **Price Alert** watches one symbol for a price (rises to / falls to), a move today (up or down by
 a percentage) or a new 52-week high or low. The key shows the condition in amber and how far away

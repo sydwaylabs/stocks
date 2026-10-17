@@ -25,8 +25,10 @@ Finnhub key handling through `src/services.ts`, and one inspector script (`ui/st
 
 - **Ticker** (`com.sydwaylabs.stocks.ticker`): one quote. Tap refreshes, hold opens the window.
 - **Watchlist** (`.watchlist`): up to 12 symbols, dots across the top. Tap moves on (pausing
-  rotation); hold opens the board (`mode: "board"`, cards after Timekeeper's world clock), where a
-  card opens its detail (the window's `focus` message, checked against the list) and × removes it.
+  rotation); hold opens the board (`mode: "board"`): rows, one open at a time. Opening a row moves the
+  detail view's `#d-body` (chart, stats, source) into it, so the chart code is shared; the rest of
+  the detail view stays hidden. Messages `focus`, `showOnKey` and `remove` are checked against the
+  list. Rows are kept by symbol and refreshed in place, so the poll never rebuilds the open one.
   Search adds and stays open. Note: an offscreen WKWebView does not advance CSS animations, so a
   headless preview of a faded-in chart shows it blank — render with the window on screen.
 - **Price Alert** (`.alert`): logic in `src/lib/alert.ts` (armed → fired → cleared → armed, with
