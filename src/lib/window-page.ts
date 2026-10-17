@@ -217,20 +217,15 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .abox-status { font-size: 12px; color: var(--fg-dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .abox-status.err { color: var(--fail); }
 .abox-form { display: flex; gap: 8px; align-items: center; }
-/* A preference, not part of the rule: saved on the click, no Set alert needed. */
-.abox-opt { display: inline-flex; align-items: center; gap: 7px; margin-top: 9px; font-size: 12px; color: var(--fg-dim); cursor: pointer; user-select: none; }
-/* Drawn, not native: WebKit's dark checkbox lost its box in testing and showed a bare tick.
-   Specific enough to beat the target field's ".abox input". */
-.abox .abox-opt input { -webkit-appearance: none; appearance: none; position: relative; flex: none;
-  width: 15px; height: 15px; margin: 0; padding: 0; border: 1px solid #6a6a70; border-radius: 4px; background: #1d1d1d; cursor: pointer; }
-.abox .abox-opt input:checked { background: #fab219; border-color: #fab219; }
-.abox .abox-opt input:checked::after { content: ""; position: absolute; left: 4.5px; top: 1.5px; width: 4px; height: 8px;
-  border: solid #1f1600; border-width: 0 2px 2px 0; transform: rotate(45deg); }
-.abox .abox-opt input:focus-visible { outline: 2px solid var(--fg-dim); outline-offset: 1px; }
-.abox select, .abox input { font: inherit; font-size: 13px; color: var(--fg); background: #1d1d1d; border: 1px solid var(--card-line);
+/* A preference, not part of the rule: saved on the click, no Set alert needed. The system's own
+   checkbox, in the alert's amber. */
+.abox-opt { display: inline-flex; align-items: center; gap: 6px; flex: none; font-size: 12px; color: var(--fg-dim); cursor: pointer; user-select: none; white-space: nowrap; }
+.abox-opt input { margin: 0; accent-color: #fab219; cursor: pointer; }
+/* The condition and the target only — not every input in the box, or the checkbox catches it. */
+.abox select, .abox #a-target { font: inherit; font-size: 13px; color: var(--fg); background: #1d1d1d; border: 1px solid var(--card-line);
   border-radius: 7px; height: 30px; box-sizing: border-box; padding: 0 8px; }
 .abox select { flex: 0 0 auto; }
-.abox input { width: 120px; font-variant-numeric: tabular-nums; }
+.abox #a-target { width: 110px; font-variant-numeric: tabular-nums; }
 .abox .spacer { flex: 1; }
 .abox button { height: 30px; border-radius: 7px; padding: 0 12px; font-size: 12.5px; }
 .abox button.iconbtn { width: 30px; padding: 0; }
@@ -311,12 +306,12 @@ ${TIP_CSS}
         <option value="low-52w">New 52-week low</option>
       </select>
       <input id="a-target" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Target">
+      <label class="abox-opt" data-hint="Open this window when the alert fires, as well as lighting the key"><input type="checkbox" id="a-popup"> Pop up when it fires</label>
       <span class="spacer"></span>
       <button id="a-remove" class="iconbtn remove" aria-label="Remove alert" data-hint="Remove alert" hidden></button>
       <button id="a-clear" hidden>Clear</button>
       <button id="a-set" class="amber">Set alert</button>
     </div>
-    <label class="abox-opt"><input type="checkbox" id="a-popup"> Open this window when the alert fires</label>
   </section>
   <div id="d-body">
   <div class="chart-head">
