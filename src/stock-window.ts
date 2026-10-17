@@ -46,6 +46,8 @@ export type StockWindowOptions = {
     remove: (symbol: string) => Promise<void>;
     /** Makes the key show this symbol. */
     showOnKey: (symbol: string) => Promise<void>;
+    /** Saves a new order: the same symbols, rearranged. */
+    reorder: (symbols: string[]) => Promise<void>;
   };
   onOpen: (close: () => void) => void;
 };
@@ -93,6 +95,16 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
       case "focus": {
         if (!board || typeof message.symbol !== "string" || !board.list().includes(message.symbol)) return { ok: false };
         viewing = message.symbol;
+        return { ok: true };
+      }
+      case "reorder": {
+        if (!board || !Array.isArray(message.symbols)) return { ok: false };
+        const next = message.symbols.filter((s): s is string => typeof s === "string");
+        const current = board.list();
+        // Only a rearrangement of exactly what is there: nothing added, dropped or doubled.
+        const same = next.length === current.length && [...next].sort().join("\n") === [...current].sort().join("\n");
+        if (!same) return { ok: false };
+        await board.reorder(next);
         return { ok: true };
       }
       case "showOnKey": {

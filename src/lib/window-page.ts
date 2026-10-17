@@ -145,7 +145,12 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 /* board: a watchlist as rows, one opening in place to the full chart and stats — so the other
    symbols stay in view and comparing is moving down the list, not going in and out of a page. */
 .wl { display: flex; flex-direction: column; gap: 6px; }
-.wrow { background: var(--card); border: 1px solid var(--card-line); border-radius: 10px; transition: border-color .1s ease; }
+.wrow { position: relative; background: var(--card); border: 1px solid var(--card-line); border-radius: 10px;
+  transition: border-color .1s ease, transform 140ms ease; }
+/* Dragging, after Timekeeper's cards: the row lifts and follows the pointer, the others slide aside. */
+.wrow.lifted { transition: none; z-index: 3; box-shadow: var(--shadow-lift, 0 6px 18px rgba(0,0,0,.45)); border-color: #6a6a70; }
+.wrow.lifted.settling { transition: transform 150ms cubic-bezier(.2, .7, .3, 1); }
+body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-select: none; }
 .wrow:hover, .wrow.cursor { border-color: #6a6a70; }
 .wrow.open { border-color: #6a6a70; }
 .whead { display: grid; grid-template-columns: 30px minmax(0, 1fr) 76px 104px 92px; align-items: center; column-gap: 12px;
@@ -371,7 +376,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     $("add").hidden = !onBoard || next !== "board";
     clearInterval(poll);
     if (next === "board") {
-      setFooter([["↑↓", "move"], ["↵", "open"], ["1–6", "range"], ["a", "add"], ["esc", "close"]]);
+      setFooter([["↑↓", "move"], ["⌥↑↓", "reorder"], ["↵", "open"], ["1–6", "range"], ["a", "add"], ["esc", "close"]]);
       loadBoard();
       poll = setInterval(function () { loadBoard(); if (openSym) loadDetail(); }, 30000);
     } else if (next === "search") {
@@ -500,7 +505,12 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       var head = el("div", "whead");
       head.setAttribute("role", "button");
       head.setAttribute("aria-expanded", "false");
-      head.addEventListener("click", function () { cursor = i; toggleRow(c.symbol); });
+      head.addEventListener("pointerdown", function (e) { beginDrag(e, boardCards.indexOf(c)); });
+      head.addEventListener("click", function () {
+        if (swallowClick) return;
+        cursor = boardCards.indexOf(c);
+        toggleRow(c.symbol);
+      });
       fillHead(head, c);
       row.append(head);
       list.append(row);
@@ -612,6 +622,84 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   function toggleRow(sym) {
     if (openSym === sym) closeRow();
     else openRow(sym);
+  }
+
+  /* ---- reordering: drag a row, or ⌥↑ / ⌥↓ on the highlighted one ---- */
+
+  var DRAG_THRESHOLD = 5;
+  var drag = null;
+  /* A press that became a drag must not also count as the click that opens the row. */
+  var swallowClick = false;
+
+  function rowList() { return boardCards.map(function (c) { return rowEls[c.symbol].row; }); }
+
+  function beginDrag(e, i) {
+    if (e.button !== 0 || boardCards.length < 2) return;
+    drag = { from: i, target: i, startY: e.clientY, active: false, row: rowEls[boardCards[i].symbol].row };
+  }
+
+  /* Where row i sits if the dragged row lands on target: everything between shifts one slot. */
+  function slotFor(i, target) {
+    if (target > drag.from && i > drag.from && i <= target) return i - 1;
+    if (target < drag.from && i >= target && i < drag.from) return i + 1;
+    return i;
+  }
+
+  document.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    var dy = e.clientY - drag.startY;
+    if (!drag.active) {
+      if (Math.abs(dy) < DRAG_THRESHOLD) return;
+      drag.active = true;
+      /* Every row the same height while they move: an open one closes first. */
+      if (openSym) closeRow();
+      drag.slots = rowList().map(function (r) { var b = r.getBoundingClientRect(); return b.top + b.height / 2; });
+      drag.row.classList.add("lifted");
+      document.body.classList.add("dragging-row");
+    }
+    var y = drag.slots[drag.from] + dy, best = drag.from, bestDistance = Infinity;
+    drag.slots.forEach(function (slot, i) {
+      var d = Math.abs(slot - y);
+      if (d < bestDistance) { bestDistance = d; best = i; }
+    });
+    drag.target = best;
+    rowList().forEach(function (r, i) {
+      if (i === drag.from) { r.style.transform = "translateY(" + dy + "px)"; return; }
+      var shift = drag.slots[slotFor(i, best)] - drag.slots[i];
+      r.style.transform = shift ? "translateY(" + shift + "px)" : "";
+    });
+  });
+
+  document.addEventListener("pointerup", function () {
+    if (!drag) return;
+    var finished = drag;
+    drag = null;
+    document.body.classList.remove("dragging-row");
+    if (!finished.active) return;
+    swallowClick = true;
+    setTimeout(function () { swallowClick = false; }, 0);
+    var settled = false, row = finished.row;
+    function land() {
+      if (settled) return;
+      settled = true;
+      rowList().forEach(function (r) { r.style.transform = ""; r.classList.remove("lifted", "settling"); });
+      if (finished.target !== finished.from) moveRow(finished.from, finished.target);
+    }
+    row.classList.add("settling");
+    row.style.transform = "translateY(" + (finished.slots[finished.target] - finished.slots[finished.from]) + "px)";
+    row.addEventListener("transitionend", land, { once: true });
+    setTimeout(land, 240);
+  });
+
+  /* Applies a move at once, so the board does not wait on the plugin, then saves it. */
+  function moveRow(from, to) {
+    var moving = boardCards.splice(from, 1)[0];
+    boardCards.splice(to, 0, moving);
+    cursor = to;
+    renderBoard();
+    post("reorder", { symbols: boardCards.map(function (c) { return c.symbol; }) }).then(function (reply) {
+      if (!reply || !reply.ok) loadBoard();
+    });
   }
 
   /* ---- detail ---- */
@@ -1015,6 +1103,12 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
         clearTimeout(debounce);
         pick(selected);
       }
+      return;
+    }
+    if (mode === "board" && e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown") && boardCards.length > 1) {
+      e.preventDefault();
+      var to = cursor + (e.key === "ArrowDown" ? 1 : -1);
+      if (to >= 0 && to < boardCards.length) { if (openSym) closeRow(); moveRow(cursor, to); }
       return;
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;

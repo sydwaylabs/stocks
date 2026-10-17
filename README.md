@@ -22,7 +22,8 @@ also move on by itself every 5, 10 or 30 seconds. Holding it opens the board: a 
 symbol with the day's line, its price and today's move, the one on the key marked. Every row
 starts closed. A click (or ↑↓ and Return) opens a row in place to the full chart — ranges, hover, price
 scale — and the key stats, with **Show on key** and **Remove**; the other rows stay in view.
-**Add symbol…** adds more.
+**Add symbol…** adds more, and dragging a row (or ⌥↑ / ⌥↓) reorders
+the list.
 
 **Price Alert** watches one symbol for a price (rises to / falls to), a move today (up or down by
 a percentage) or a new 52-week high or low. The key shows the condition in amber and how far away

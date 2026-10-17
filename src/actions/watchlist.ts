@@ -233,6 +233,12 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
           this.schedule(id);
           await this.show(instance);
         },
+        reorder: async (symbols) => {
+          // apply() keeps the key on the symbol it was showing, wherever that has moved to.
+          this.apply(instance, { ...instance.settings, symbols: symbols.join(", ") });
+          await instance.action.setSettings(instance.settings);
+          await this.show(instance);
+        },
         showOnKey: async (symbol) => {
           const at = instance.list.indexOf(symbol);
           if (at < 0) return;
