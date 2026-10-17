@@ -29,6 +29,7 @@ Finnhub key handling through `src/services.ts`, and one inspector script (`ui/st
   detail view's `#d-body` (chart, stats, source) into it, so the chart code is shared; the rest of
   the detail view stays hidden. Messages `focus`, `showOnKey` and `remove` are checked against the
   list. Rows are kept by symbol and refreshed in place, so the poll never rebuilds the open one.
+  Every row opens closed (the user's call); the keyboard cursor starts on the key's row.
   Search adds and stays open. Note: an offscreen WKWebView does not advance CSS animations, so a
   headless preview of a faded-in chart shows it blank — render with the window on screen.
 - **Price Alert** (`.alert`): logic in `src/lib/alert.ts` (armed → fired → cleared → armed, with

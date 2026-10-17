@@ -19,8 +19,8 @@ A Stream Deck plugin by Sydway Labs, for macOS 12 or later and Stream Deck 6.9 o
 **Watchlist** keeps up to 12 symbols on one key, with a dot for each across the top. Type them
 into the key's settings or add them with search, which stays open so you can add several. It can
 also move on by itself every 5, 10 or 30 seconds. Holding it opens the board: a row for every
-symbol with the day's line, its price and today's move, the one on the key marked and already
-open. A click (or ↑↓ and Return) opens a row in place to the full chart — ranges, hover, price
+symbol with the day's line, its price and today's move, the one on the key marked. Every row
+starts closed. A click (or ↑↓ and Return) opens a row in place to the full chart — ranges, hover, price
 scale — and the key stats, with **Show on key** and **Remove**; the other rows stay in view.
 **Add symbol…** adds more.
 

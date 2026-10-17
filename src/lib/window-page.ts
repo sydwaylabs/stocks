@@ -402,14 +402,11 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       boardCards = (reply && reply.cards) || [];
       boardOnKey = (reply && reply.onKey) || "";
       $("chip").textContent = "Watchlist · " + boardCards.length + " of " + ((reply && reply.max) || 12);
-      /* On first open, the row the key is showing starts open: you land on what you were looking at. */
+      /* Every row starts closed; the keyboard's place starts on the row the key is showing, so
+         Return opens what you were just looking at. */
       if (firstBoard) {
         firstBoard = false;
-        var start = boardCards.findIndex(function (c) { return c.symbol === boardOnKey; });
-        cursor = Math.max(0, start);
-        renderBoard();
-        if (start >= 0 && !boardCards[start].error) openRow(boardOnKey);
-        return;
+        cursor = Math.max(0, boardCards.findIndex(function (c) { return c.symbol === boardOnKey; }));
       }
       renderBoard();
     }).catch(function () {
