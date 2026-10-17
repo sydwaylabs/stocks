@@ -205,7 +205,9 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .wpanel .stat { flex-direction: column; justify-content: flex-start; gap: 1px; padding: 6px 0; }
 .wpanel .stat dt { font-size: 11px; }
 .wpanel .stat dd { text-align: left; font-size: 12.5px; }
-.wpanel .meta { margin-top: 6px; }
+/* The source line shares the row's last line with its buttons: on the left, quiet, and clipped
+   rather than wrapped if a long one meets them. */
+.wacts .meta { margin: 0 auto 0 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .board-empty { color: var(--fg-dim); text-align: center; padding: 40px 10px; }
 
 /* search */
@@ -549,6 +551,9 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   /* Puts the chart block back in the hidden detail view, out of any row. */
   function parkBody() {
     var body = $("d-body");
+    /* The source line is borrowed by an open row's button line; it goes home with the rest. */
+    var meta = $("d-meta") || body.querySelector("#d-meta");
+    if (meta.parentNode !== body) body.append(meta);
     if (body.parentNode !== $("detail")) $("detail").append(body);
     var acts = $("wacts");
     if (acts) acts.remove();
@@ -559,10 +564,13 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (!r) return;
     r.row.classList.add("open");
     r.head.setAttribute("aria-expanded", "true");
+    /* Found before anything moves: once #d-body leaves the document, getElementById cannot see in. */
+    var body = $("d-body"), meta = $("d-meta");
     var panel = el("div", "wpanel");
-    panel.append($("d-body"));
+    panel.append(body);
     var acts = el("div", "wacts");
     acts.id = "wacts";
+    acts.append(meta);
     if (sym !== boardOnKey) {
       var onKey = el("button", "", "Show on key");
       onKey.addEventListener("click", function () {
