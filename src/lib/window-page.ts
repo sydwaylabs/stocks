@@ -217,6 +217,16 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .abox-status { font-size: 12px; color: var(--fg-dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .abox-status.err { color: var(--fail); }
 .abox-form { display: flex; gap: 8px; align-items: center; }
+/* A preference, not part of the rule: saved on the click, no Set alert needed. */
+.abox-opt { display: inline-flex; align-items: center; gap: 7px; margin-top: 9px; font-size: 12px; color: var(--fg-dim); cursor: pointer; user-select: none; }
+/* Drawn, not native: WebKit's dark checkbox lost its box in testing and showed a bare tick.
+   Specific enough to beat the target field's ".abox input". */
+.abox .abox-opt input { -webkit-appearance: none; appearance: none; position: relative; flex: none;
+  width: 15px; height: 15px; margin: 0; padding: 0; border: 1px solid #6a6a70; border-radius: 4px; background: #1d1d1d; cursor: pointer; }
+.abox .abox-opt input:checked { background: #fab219; border-color: #fab219; }
+.abox .abox-opt input:checked::after { content: ""; position: absolute; left: 4.5px; top: 1.5px; width: 4px; height: 8px;
+  border: solid #1f1600; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.abox .abox-opt input:focus-visible { outline: 2px solid var(--fg-dim); outline-offset: 1px; }
 .abox select, .abox input { font: inherit; font-size: 13px; color: var(--fg); background: #1d1d1d; border: 1px solid var(--card-line);
   border-radius: 7px; height: 30px; box-sizing: border-box; padding: 0 8px; }
 .abox select { flex: 0 0 auto; }
@@ -306,6 +316,7 @@ ${TIP_CSS}
       <button id="a-clear" hidden>Clear</button>
       <button id="a-set" class="amber">Set alert</button>
     </div>
+    <label class="abox-opt"><input type="checkbox" id="a-popup"> Open this window when the alert fires</label>
   </section>
   <div id="d-body">
   <div class="chart-head">
@@ -1036,6 +1047,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     status.textContent = a.status;
     $("a-clear").hidden = a.phase !== "fired";
     $("a-remove").hidden = !a.active;
+    $("a-popup").checked = a.popup !== false;
     /* What someone is typing is theirs until they set it; a refresh only updates the status. */
     if (!alertDirty) {
       $("a-cond").value = a.condition;
@@ -1135,6 +1147,11 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     $("a-target").addEventListener("input", function () { alertDirty = true; syncAlertForm(); });
     $("a-target").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); setAlert(); } });
     $("a-set").addEventListener("click", setAlert);
+    $("a-popup").addEventListener("change", function () {
+      post("setPopup", { on: $("a-popup").checked }).then(function (reply) {
+        if (reply && reply.alert) { alertNow = reply.alert; }
+      });
+    });
     $("a-remove").append(trashIcon());
     $("a-remove").addEventListener("click", function () {
       post("removeAlert").then(function (reply) {

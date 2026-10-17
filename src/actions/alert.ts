@@ -299,6 +299,11 @@ export class PriceAlert extends SingletonAction<AlertSettings> {
           await this.setRule(id, condition, target);
           return alertView(instance.settings, instance.reading);
         },
+        setPopup: async (on) => {
+          instance.settings = { ...instance.settings, popup: on };
+          await instance.action.setSettings(instance.settings);
+          return alertView(instance.settings, instance.reading);
+        },
         remove: async () => {
           // Back to no rule: nothing to watch until a new one is set, here or in the settings.
           await this.setRule(id, "above", 0);

@@ -64,6 +64,7 @@ export type StockWindowOptions = {
     set: (condition: Condition, target: number) => Promise<AlertView>;
     clear: () => Promise<AlertView>;
     remove: () => Promise<AlertView>;
+    setPopup: (on: boolean) => Promise<AlertView>;
   };
   onOpen: (close: () => void) => void;
 };
@@ -124,6 +125,9 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         }
         return { alert: await options.alert.set(condition, target) };
       }
+      case "setPopup":
+        if (!options.alert || typeof message.on !== "boolean") return {};
+        return { alert: await options.alert.setPopup(message.on) };
       case "removeAlert":
         return options.alert ? { alert: await options.alert.remove() } : {};
       case "clearAlert":

@@ -92,6 +92,8 @@ describe("alertView", () => {
     expect(alertView({ ...base, target: 0 }, null).status).toMatch(/click the chart/);
     expect(alertView({ ...base, target: 0 }, null).active).toBe(false);
     expect(alertView(base, null).active).toBe(true);
+    expect(alertView(base, null).popup).toBe(true);
+    expect(alertView({ ...base, popup: false }, null).popup).toBe(false);
     expect(alertView({ ...base, condition: "high-52w", target: 0 }, null).needsTarget).toBe(false);
   });
 

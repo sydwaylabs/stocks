@@ -154,10 +154,12 @@ export type AlertView = {
   firedAt: number | null;
   /** There is a rule to watch (and so one to remove). */
   active: boolean;
+  /** Open the window when it fires. */
+  popup: boolean;
 };
 
 export function alertView(
-  s: { condition: Condition; target: number; phase: Phase; firedAt: number | null; firedPrice: number | null },
+  s: { condition: Condition; target: number; phase: Phase; firedAt: number | null; firedPrice: number | null; popup?: boolean },
   r: Reading | null
 ): AlertView {
   const unset = needsTarget(s.condition) && s.target <= 0;
@@ -175,5 +177,6 @@ export function alertView(
     status,
     firedAt: s.phase === "fired" ? s.firedAt : null,
     active: !unset,
+    popup: s.popup !== false,
   };
 }
