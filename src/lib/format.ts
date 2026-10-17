@@ -63,11 +63,14 @@ export function formatChangeShort(change: number | undefined, currency?: string)
  */
 export const POINTS = "points";
 
-/** A sum of money without a sign, sized for a key: "$6.54", "C$2.31", "$1,234" — or "39.45 pts". */
+/**
+ * A sum of money without a sign, sized for a key: "$6.54", "C$2.31", "$1,234". An index's points are
+ * the bare number, "39.45": no currency sign is mark enough, as market apps show them.
+ */
 export function formatAmount(value: number, currency?: string): string {
   const abs = Math.abs(value);
   const digits = abs >= 1000 ? grouped(0).format(abs) : abs >= 0.01 || abs === 0 ? grouped(2).format(abs) : abs.toPrecision(2);
-  if (currency === POINTS) return `${digits} pts`;
+  if (currency === POINTS) return digits;
   const unit = (currency && CURRENCY_SIGNS[currency]) ?? "";
   return `${unit}${digits}`;
 }

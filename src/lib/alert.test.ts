@@ -67,7 +67,7 @@ describe("words for the key", () => {
     expect(distance("below", 300, { price: 343.46, currency: "USD" }, true)).toBe("$43.46 (12.7%) away");
     expect(distance("below", 80000, { price: 81610, currency: "USD" })).toBe("$1,610 away");
     expect(distance("above", 290, { price: 280.01, currency: "CAD" })).toBe("C$9.99 away");
-    expect(distance("above", 36300, { price: 36176.55, currency: "points" })).toBe("123.45 pts away");
+    expect(distance("above", 36300, { price: 36176.55, currency: "points" })).toBe("123.45 away");
     expect(distance("high-52w", 0, { price: 343.46, wk52High: 348.15 })).toBe("1.4% away");
     expect(distance("up-pct", 3, { price: 1, changePct: 1.2 })).toBe("+1.20% now");
     expect(distance("low-52w", 0, { price: 1 })).toBeUndefined();

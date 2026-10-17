@@ -29,8 +29,8 @@ describe("format", () => {
     expect(formatChangeShort(-1234.5, "USD")).toBe("-$1,235");
     expect(formatChangeShort(0.5, "GBp")).toBe("+0.50");
     expect(formatChangeShort(-2.31, "CAD")).toBe("-C$2.31");
-    expect(formatChangeShort(39.45, "points")).toBe("+39.45 pts");
-    expect(formatChangeShort(-1234.5, "points")).toBe("-1,235 pts");
+    expect(formatChangeShort(39.45, "points")).toBe("+39.45");
+    expect(formatChangeShort(-1234.5, "points")).toBe("-1,235");
     expect(formatChangeShort(0, undefined)).toBe("0.00");
     expect(formatChangeShort(undefined, "USD")).toBe("");
   });

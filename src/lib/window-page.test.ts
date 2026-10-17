@@ -118,7 +118,7 @@ describe("board cards", () => {
       quote: { symbol: "^GSPTSE", name: "S&P/TSX Composite index", currency: "CAD", price: 36176.55, prevClose: 36137.1, change: 39.45, changePct: 0.11, source: "yahoo" },
       details: { instrumentType: "INDEX" }, fetchedAt: 0,
     });
-    expect(card.changeAmount).toBe("+39.45 pts");
+    expect(card.changeAmount).toBe("+39.45");
     expect(card.currency).toBeUndefined();
   });
 
