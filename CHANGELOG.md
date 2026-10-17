@@ -27,6 +27,8 @@ notes and the Marketplace "what's new" text are generated from this file.
 
 ### Fixed
 
+- An index (the TSX Composite, the Dow) moves in points, not dollars: amounts read "+39.45 pts",
+  and its level shows no currency.
 - A key whose window had been open while it was redrawn (switching folders, an alert firing)
   ignored every hold afterwards, so its window could not be opened again.
 

@@ -113,6 +113,15 @@ describe("board cards", () => {
     expect(card.points.at(-1)).toBe(points.at(-1));
   });
 
+  it("counts an index in points, with no currency beside its level", () => {
+    const card = buildBoardCard({
+      quote: { symbol: "^GSPTSE", name: "S&P/TSX Composite index", currency: "CAD", price: 36176.55, prevClose: 36137.1, change: 39.45, changePct: 0.11, source: "yahoo" },
+      details: { instrumentType: "INDEX" }, fetchedAt: 0,
+    });
+    expect(card.changeAmount).toBe("+39.45 pts");
+    expect(card.currency).toBeUndefined();
+  });
+
   it("thins only long series", () => {
     expect(thin([1, 2, 3], 60)).toEqual([1, 2, 3]);
     expect(thin([0, 1, 2, 3, 4, 5, 6], 3)).toEqual([0, 3, 6]);

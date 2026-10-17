@@ -1,6 +1,7 @@
 import { buildChart, type ChartData } from "./chart-data.js";
 import { compact, formatChange, formatChangeShort, formatPct, formatPriceLong, trendOf, type Trend } from "./format.js";
-import type { Snapshot } from "./quotes.js";
+import { unitOf, type Snapshot } from "./quotes.js";
+import { POINTS } from "./format.js";
 import type { Earnings, SearchResult } from "./providers/types.js";
 
 /**
@@ -62,7 +63,8 @@ export function buildDetail(snap: Snapshot): DetailData {
     name: quote.name ?? quote.symbol,
     exchange: details.exchange,
     price: formatPriceLong(quote.price),
-    currency: quote.currency,
+    // An index level has no currency to show beside it.
+    currency: unitOf(snap) === POINTS ? undefined : quote.currency,
     change: formatChange(quote.change),
     changePct: formatPct(quote.changePct),
     trend: trendOf(quote.change ?? quote.changePct),
@@ -162,10 +164,10 @@ export function buildBoardCard(snap: Snapshot): BoardCard {
     symbol: quote.symbol,
     name: quote.name ?? quote.symbol,
     price: formatPriceLong(quote.price),
-    currency: quote.currency,
+    currency: unitOf(snap) === POINTS ? undefined : quote.currency,
     change: formatChange(quote.change),
     changePct: formatPct(quote.changePct),
-    changeAmount: formatChangeShort(quote.change, quote.currency),
+    changeAmount: formatChangeShort(quote.change, unitOf(snap)),
     trend: trendOf(quote.change ?? quote.changePct),
     points: thin(series?.points ?? [], CARD_POINTS),
     prevClose: quote.prevClose,

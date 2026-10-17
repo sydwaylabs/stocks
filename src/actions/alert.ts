@@ -12,7 +12,7 @@ import streamDeck, {
 import { acknowledge, alertView, CONDITIONS, describeCondition, distance, needsTarget, rearmLine, step, type Condition, type Reading } from "../lib/alert.js";
 import { renderKey, toDataUri, type KeyView } from "../lib/key-image.js";
 import { ProviderError } from "../lib/providers/types.js";
-import { normalise } from "../lib/quotes.js";
+import { normalise, unitOf } from "../lib/quotes.js";
 import { ALERT_EDITABLE, mergeAlert, type AlertSettings } from "../lib/settings.js";
 import { handleSharedMessage, LONG_PRESS_MS, onKeyChange, quotes } from "../services.js";
 import { openStockWindow } from "../stock-window.js";
@@ -180,7 +180,7 @@ export class PriceAlert extends SingletonAction<AlertSettings> {
         changePct: snap.quote.changePct,
         wk52High: snap.details.wk52High,
         wk52Low: snap.details.wk52Low,
-        currency: snap.quote.currency,
+        currency: unitOf(snap),
         at: Date.now(),
       };
       if (!needsTarget(condition) || target > 0) {

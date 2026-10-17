@@ -1,3 +1,4 @@
+import { POINTS } from "./format.js";
 import * as finnhub from "./providers/finnhub.js";
 import * as nasdaq from "./providers/nasdaq.js";
 import * as yahoo from "./providers/yahoo.js";
@@ -268,6 +269,15 @@ export function exchangeDate(now: number): string {
 /** Whole days from `today` to `date`, both YYYY-MM-DD. */
 export function daysUntil(date: string, today: string): number {
   return Math.round((Date.parse(`${date}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000);
+}
+
+/**
+ * What a move in this symbol is counted in: points for an index, else its currency. Yahoo labels
+ * an index with its market's currency, but an index level is not a price.
+ */
+export function unitOf(snap: Pick<Snapshot, "quote" | "details">): string | undefined {
+  const index = snap.details.instrumentType === "INDEX" || snap.quote.symbol.startsWith("^");
+  return index ? POINTS : snap.quote.currency;
 }
 
 export function normalise(symbol: string): string {

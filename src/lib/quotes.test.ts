@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ProviderError, type Quote } from "./providers/types.js";
 import type { ChartResult } from "./providers/yahoo.js";
-import { daysUntil, exchangeDate, QuoteService, type Providers } from "./quotes.js";
+import { daysUntil, exchangeDate, QuoteService, unitOf, type Providers } from "./quotes.js";
 
 function chart(symbol: string, overrides: Partial<Quote> = {}): ChartResult {
   return {
@@ -256,5 +256,14 @@ describe("QuoteService.search", () => {
     const providers = stubs();
     expect(await new QuoteService(() => null, { providers }).search("  ")).toEqual([]);
     expect(providers.yahooSearch).not.toHaveBeenCalled();
+  });
+});
+
+describe("unitOf", () => {
+  it("counts an index in points, whatever currency Yahoo gives it", () => {
+    const quote = { symbol: "^GSPTSE", price: 1, currency: "CAD", source: "yahoo" as const };
+    expect(unitOf({ quote, details: { instrumentType: "INDEX" } })).toBe("points");
+    expect(unitOf({ quote, details: {} })).toBe("points");
+    expect(unitOf({ quote: { ...quote, symbol: "RY.TO" }, details: { instrumentType: "EQUITY" } })).toBe("CAD");
   });
 });

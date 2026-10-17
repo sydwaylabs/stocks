@@ -12,7 +12,7 @@ import streamDeck, {
 import { renderKey, toDataUri, type KeyView } from "../lib/key-image.js";
 import { ProviderError } from "../lib/providers/types.js";
 import { addSymbol, mergeWatchlist, parseSymbols, WATCHLIST_EDITABLE, WATCHLIST_MAX, type WatchlistSettings } from "../lib/settings.js";
-import type { Snapshot } from "../lib/quotes.js";
+import { unitOf, type Snapshot } from "../lib/quotes.js";
 import { handleSharedMessage, LONG_PRESS_MS, onKeyChange, quotes } from "../services.js";
 import { openStockWindow } from "../stock-window.js";
 import { ticker } from "../tick.js";
@@ -202,7 +202,7 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
       changePct: snap.quote.changePct,
       points: snap.series?.points,
       prevClose: snap.quote.prevClose,
-      currency: snap.quote.currency,
+      currency: unitOf(snap),
       display: instance.settings.display,
       changeAs: instance.settings.changeAs,
       stale: Date.now() - snap.fetchedAt > 2 * REFRESH_MS,

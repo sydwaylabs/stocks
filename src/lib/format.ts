@@ -57,11 +57,18 @@ export function formatChangeShort(change: number | undefined, currency?: string)
   return `${sign}${formatAmount(change, currency)}`;
 }
 
-/** A sum of money without a sign, sized for a key: "$6.54", "C$2.31", "$1,234". */
+/**
+ * The unit an index moves in. Not a currency: Yahoo gives the TSX Composite "CAD", but it moves
+ * 39 points, not 39 dollars. See `unitOf` in quotes.ts.
+ */
+export const POINTS = "points";
+
+/** A sum of money without a sign, sized for a key: "$6.54", "C$2.31", "$1,234" — or "39.45 pts". */
 export function formatAmount(value: number, currency?: string): string {
   const abs = Math.abs(value);
-  const unit = (currency && CURRENCY_SIGNS[currency]) ?? "";
   const digits = abs >= 1000 ? grouped(0).format(abs) : abs >= 0.01 || abs === 0 ? grouped(2).format(abs) : abs.toPrecision(2);
+  if (currency === POINTS) return `${digits} pts`;
+  const unit = (currency && CURRENCY_SIGNS[currency]) ?? "";
   return `${unit}${digits}`;
 }
 
