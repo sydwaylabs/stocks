@@ -111,15 +111,22 @@ const AMBER = "#fab219";
 const AMBER_DARK = "#4a3507";
 
 /** Up to twelve dots, centred across the top edge; the current one filled, the rest outlined. */
+/** The row of dots sits on the bottom edge, as the world clock's do (Timekeeper). */
+const DOTS_Y = 135;
+
 function dotsRow(dots: Dots | undefined): string {
-  if (!dots || dots.count < 2) return "";
+  if (!hasDots(dots)) return "";
   const gap = dots.count > 8 ? 9 : 12;
   const start = SIZE / 2 - ((dots.count - 1) * gap) / 2;
   return Array.from({ length: dots.count }, (_, i) =>
     i === dots.active
-      ? `<circle cx="${start + i * gap}" cy="6" r="3.5" fill="${FG}"/>`
-      : `<circle cx="${start + i * gap}" cy="6" r="2.5" fill="#55555c"/>`
+      ? `<circle cx="${start + i * gap}" cy="${DOTS_Y}" r="3.5" fill="${FG}"/>`
+      : `<circle cx="${start + i * gap}" cy="${DOTS_Y}" r="2.5" fill="#55555c"/>`
   ).join("");
+}
+
+function hasDots(dots: Dots | undefined): dots is Dots {
+  return !!dots && dots.count > 1;
 }
 
 /**
@@ -188,14 +195,15 @@ export function renderKey(view: KeyView): string {
 
     case "loading": {
       const sym = symbolFont(view.symbol);
-      parts.push(dotsRow(view.dots), text(mid, 40, sym.size, FG, sym.text), text(mid, 92, 30, DIM, "···"));
+      parts.push(text(mid, 40, sym.size, FG, sym.text), text(mid, 86, 30, DIM, "···"), dotsRow(view.dots));
       break;
     }
 
     case "error": {
       const sym = symbolFont(view.symbol);
-      parts.push(dotsRow(view.dots), text(mid, 40, sym.size, FG, sym.text), text(mid, 86, 20, "#fab219", view.message, 600));
-      if (view.hint) parts.push(text(mid, 116, 17, DIM, view.hint, 600));
+      parts.push(text(mid, 40, sym.size, FG, sym.text), text(mid, 86, 20, "#fab219", view.message, 600));
+      if (view.hint) parts.push(text(mid, hasDots(view.dots) ? 112 : 116, 17, DIM, view.hint, 600));
+      parts.push(dotsRow(view.dots));
       break;
     }
 
@@ -205,21 +213,25 @@ export function renderKey(view: KeyView): string {
       const fade = (c: string) => (view.stale ? mixHex(BG, c, 0.45) : c);
       const colour = fade(COLOURS[trend]);
       const sym = symbolFont(view.symbol);
-      // Dots across the top push the symbol down a little so the two do not touch at 72px.
-      const symbolY = view.dots && view.dots.count > 1 ? 39 : 34;
-      parts.push(dotsRow(view.dots), text(mid, symbolY, Math.min(sym.size, view.dots && view.dots.count > 1 ? 26 : sym.size), fade(FG), sym.text));
+      // With dots on the bottom edge, everything moves up and the sparkline gives a little height.
+      const dotted = hasDots(view.dots);
+      const L = dotted
+        ? { symbol: 30, price: 64, spark: { y: 73, h: 21 }, move: 117, big: 70, bigSpark: { y: 84, h: 28 } }
+        : { symbol: 34, price: 72, spark: { y: 84, h: 26 }, move: 136, big: 80, bigSpark: { y: 96, h: 32 } };
+      parts.push(text(mid, L.symbol, sym.size, fade(FG), sym.text));
       if (view.earningsSoon) parts.push(earningsBadge(fade(EARNINGS)));
 
       const move = view.changeAs === "amount" ? formatChangeShort(view.change, view.currency) : formatPct(view.changePct);
       if (view.display === "change" && move) {
-        parts.push(text(mid, 80, numberFont(move), colour, move));
-        parts.push(sparkline(view.points ?? [], view.prevClose, mixHex(BG, colour, 0.6), { x: 14, y: 96, w: 116, h: 32 }));
+        parts.push(text(mid, L.big, numberFont(move), colour, move));
+        parts.push(sparkline(view.points ?? [], view.prevClose, mixHex(BG, colour, 0.6), { x: 14, ...L.bigSpark, w: 116 }));
       } else {
         const price = formatPrice(view.price);
-        parts.push(text(mid, 72, numberFont(price), fade(FG), price));
-        parts.push(sparkline(view.points ?? [], view.prevClose, mixHex(BG, colour, 0.5), { x: 14, y: 84, w: 116, h: 26 }));
-        if (move) parts.push(text(mid, 136, move.length > 8 ? 19 : 22, colour, move));
+        parts.push(text(mid, L.price, numberFont(price), fade(FG), price));
+        parts.push(sparkline(view.points ?? [], view.prevClose, mixHex(BG, colour, 0.5), { x: 14, ...L.spark, w: 116 }));
+        if (move) parts.push(text(mid, L.move, move.length > 8 ? 18 : dotted ? 20 : 22, colour, move));
       }
+      parts.push(dotsRow(view.dots));
       break;
     }
   }

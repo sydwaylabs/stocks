@@ -1,3 +1,5 @@
+import { TIP_CSS, TIP_SCRIPT } from "./page-tip.js";
+
 /**
  * The Stocks window: one page with two views.
  *
@@ -136,6 +138,8 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .stats { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; margin-top: 12px; }
 .stat { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; line-height: 18px; min-width: 0; }
 .stat dt { color: var(--fg-dim); white-space: nowrap; }
+/* A label that explains itself on hover says so with a faint dotted underline. */
+.stat dt[data-hint] { text-decoration: underline dotted rgba(255,255,255,.28); text-underline-offset: 3px; cursor: help; }
 .stat dd { margin: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meta { color: var(--fg-faint); font-size: 11px; margin-top: 10px; }
 .note { color: var(--slow); font-size: 12px; margin-top: 8px; }
@@ -175,11 +179,7 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 /* Clicking a pill switches every row between % and the amount, as Stocks on iPhone does. */
 .wmove { cursor: pointer; border: 1px solid transparent; position: relative; }
 .wmove:hover { border-color: rgba(255,255,255,.18); }
-.wmove[data-tip]::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); right: 0; z-index: 5;
-  padding: 4px 7px; border-radius: 6px; background: var(--bg); color: var(--fg-dim); border: 1px solid var(--card-line);
-  box-shadow: var(--shadow-lift, 0 6px 18px rgba(0,0,0,.45)); font-size: 11px; font-weight: 400; white-space: nowrap;
-  opacity: 0; pointer-events: none; transition: opacity .1s ease; }
-.wmove[data-tip]:hover::after { opacity: 1; transition-delay: .4s; }
+
 .werr { grid-column: 3 / -1; justify-self: end; color: var(--slow); font-size: 12.5px; }
 .wpanel { padding: 2px 12px 12px; border-top: 1px solid var(--line); }
 .wpanel .chart-head { margin-top: 10px; }
@@ -194,12 +194,7 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .iconbtn:hover { background: var(--kbd); color: var(--fg); }
 .iconbtn.remove { color: #fff; background: var(--fail); border-color: var(--fail); }
 .iconbtn.remove:hover { color: #fff; background: #dc4a4a; border-color: #dc4a4a; }
-/* Above the button: it sits at the foot of an open row, where a tip below would be cut off. */
-.iconbtn[data-tip]::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); right: 0; z-index: 5;
-  padding: 4px 7px; border-radius: 6px; background: var(--bg); color: var(--fg-dim); border: 1px solid var(--card-line);
-  box-shadow: var(--shadow-lift, 0 6px 18px rgba(0,0,0,.45)); font-size: 11px; white-space: nowrap;
-  opacity: 0; pointer-events: none; transition: opacity .1s ease; }
-.iconbtn[data-tip]:hover::after { opacity: 1; }
+
 /* In a row, the stats sit four across and label-over-value, so a full set is three short lines. */
 .wpanel .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 16px; margin-top: 10px; }
 .wpanel .stat { flex-direction: column; justify-content: flex-start; gap: 1px; padding: 6px 0; }
@@ -209,6 +204,11 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
    rather than wrapped if a long one meets them. */
 .wacts .meta { margin: 0 auto 0 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .board-empty { color: var(--fg-dim); text-align: center; padding: 40px 10px; }
+
+/* One tooltip for the page (patterns/page-tip): the native host shows no title attribute, and a
+   tip on the element itself is clipped by the scrolling board. Hints are sentences, so they wrap. */
+${TIP_CSS}
+.page-tip { white-space: normal; max-width: 260px; }
 
 /* search */
 .search-box { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; color: var(--fg); background: var(--card); border: 1px solid var(--card-line); border-radius: 8px; padding: 9px 11px; }
@@ -488,7 +488,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       var price = el("div", "wprice", c.price);
       if (c.currency) price.append(el("span", "unit", c.currency));
       var pill = el("div", "wmove " + c.trend, changeAs === "amount" ? (c.changeAmount || c.change || "") : (c.changePct || c.change || ""));
-      pill.dataset.tip = changeAs === "amount" ? "Show as %" : "Show as amount";
+      pill.dataset.hint = changeAs === "amount" ? "Show as %" : "Show as amount";
       pill.setAttribute("role", "button");
       pill.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
       pill.addEventListener("click", function (e) { e.stopPropagation(); toggleChangeAs(); });
@@ -580,7 +580,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     }
     var remove = el("button", "iconbtn remove");
     remove.setAttribute("aria-label", "Remove " + sym);
-    remove.dataset.tip = "Remove from watchlist";
+    remove.dataset.hint = "Remove from watchlist";
     remove.append(trashIcon());
     remove.addEventListener("click", function () {
       post("remove", { symbol: sym }).then(function () { closeRow(); loadBoard(); });
@@ -779,7 +779,9 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     rows.replaceChildren();
     d.rows.forEach(function (r) {
       var item = el("div", "stat");
-      item.append(el("dt", "", r.label), el("dd", "", r.value));
+      var label = el("dt", "", r.label);
+      if (r.hint) label.dataset.hint = r.hint;
+      item.append(label, el("dd", "", r.value));
       rows.append(item);
     });
 
@@ -1173,6 +1175,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   show(mode);
 })();
 </script>
+<script>${TIP_SCRIPT}</script>
 </body>
 </html>`;
 }

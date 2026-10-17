@@ -17,10 +17,11 @@ describe("window page", () => {
     { mode: "board" as const, symbol: "AAPL", windowTitle: "Stocks — watchlist", adding: true, canChange: false },
   ];
 
-  it("emits two script blocks that parse, for every start", () => {
+  it("emits script blocks that all parse, for every start", () => {
     for (const init of inits) {
       const scripts = scriptsIn(renderPage("tok</script>", init));
-      expect(scripts).toHaveLength(2);
+      // The page's own two, then the shared tooltip's.
+      expect(scripts).toHaveLength(3);
       for (const src of scripts) expect(() => new Function(src)).not.toThrow();
     }
   });
@@ -46,7 +47,7 @@ describe("detail data", () => {
   it("formats every field the window shows", () => {
     const d = buildDetail(snap);
     expect(d).toMatchObject({ symbol: "AAPL", price: "343.46", change: "+1.46", changePct: "+0.43%", trend: "up", source: "Yahoo Finance" });
-    expect(d.rows).toEqual([
+    expect(d.rows.map(({ label, value }) => ({ label, value }))).toEqual([
       { label: "Day range", value: "340.46 – 347.82" },
       { label: "52-week range", value: "243.42 – 348.15" },
       { label: "Previous close", value: "342.00" },
@@ -73,6 +74,8 @@ describe("detail data", () => {
       "Day range", "52-week range", "Previous close", "Market cap", "Volume", "P/E (TTM)", "EPS (TTM)", "Dividend yield", "Beta", "Next earnings", "Type",
     ]);
     expect(d.rows.find((r) => r.label === "Dividend yield")?.value).toBe("0.44%");
+    expect(d.rows.find((r) => r.label === "Beta")?.hint).toMatch(/swings compared with the market/);
+    expect(d.rows.find((r) => r.label === "Type")?.hint).toBeUndefined();
     expect(d.company).toBe("Technology · US");
     expect(d.website).toBe("https://www.apple.com/");
   });

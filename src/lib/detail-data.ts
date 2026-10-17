@@ -19,7 +19,8 @@ export type DetailData = {
   trend: Trend;
   /** Today's chart. Longer ranges are asked for separately, when picked. */
   chart?: ChartData;
-  rows: { label: string; value: string }[];
+  /** `hint` explains the figure, shown on hover; plain words for someone new to the term. */
+  rows: { label: string; value: string; hint?: string }[];
   /** Company facts from a Finnhub key: industry and country, already joined. */
   company?: string;
   /** Finnhub's URL when built; the window swaps it for its own cached /asset/logo address. */
@@ -39,7 +40,7 @@ export function buildDetail(snap: Snapshot): DetailData {
   const rows: DetailData["rows"] = [];
   const range = (label: string, low?: number, high?: number) => {
     if (low === undefined || high === undefined || high < low) return;
-    rows.push({ label, value: `${formatPriceLong(low)} – ${formatPriceLong(high)}` });
+    rows.push({ label, value: `${formatPriceLong(low)} – ${formatPriceLong(high)}`, hint: HINTS[label] });
   };
   range("Day range", quote.dayLow, quote.dayHigh);
   range("52-week range", details.wk52Low, details.wk52High);
@@ -53,6 +54,8 @@ export function buildDetail(snap: Snapshot): DetailData {
   if (details.beta !== undefined) rows.push({ label: "Beta", value: details.beta.toFixed(2) });
   if (details.earnings) rows.push({ label: "Next earnings", value: formatEarnings(details.earnings) });
   if (details.instrumentType) rows.push({ label: "Type", value: typeLabel(details.instrumentType) });
+
+  for (const row of rows) row.hint ??= HINTS[row.label];
 
   return {
     symbol: quote.symbol,
@@ -74,6 +77,20 @@ export function buildDetail(snap: Snapshot): DetailData {
     note: snap.keyRejected ? "Finnhub refused the saved key, so this is from Yahoo." : undefined,
   };
 }
+
+/** What each figure means, for someone who has not met the term. Shown on hover in the window. */
+export const HINTS: Record<string, string> = {
+  "Day range": "The lowest and highest price today.",
+  "52-week range": "The lowest and highest price over the past year.",
+  "Previous close": "The price at yesterday's close. Today's change is measured from it.",
+  "Market cap": "What the whole company is worth: the share price times the number of shares.",
+  Volume: "How many shares (or coins) have traded today.",
+  "P/E (TTM)": "Price divided by the last 12 months' earnings per share. Higher means paying more for each dollar of profit.",
+  "EPS (TTM)": "The company's profit per share over the last 12 months.",
+  "Dividend yield": "A year's dividends as a percentage of the share price.",
+  Beta: "How much it swings compared with the market. 1 moves with it, above 1 swings more, below 1 is steadier. Based on past prices.",
+  "Next earnings": "When the company next reports its results. Prices often move sharply around this date.",
+};
 
 const HOURS = { bmo: "before open", amc: "after close", dmh: "during market hours" } as const;
 

@@ -16,7 +16,7 @@ A Stream Deck plugin by Sydway Labs, for macOS 12 or later and Stream Deck 6.9 o
 | **Price Alert** (watching) | Check now | Detail window |
 | **Price Alert** (empty key) | Open search | Open search |
 
-**Watchlist** keeps up to 12 symbols on one key, with a dot for each across the top. Type them
+**Watchlist** keeps up to 12 symbols on one key, with a dot for each along the bottom. Type them
 into the key's settings or add them with search, which stays open so you can add several. It can
 also move on by itself every 5, 10 or 30 seconds. Holding it opens the board: a row for every
 symbol with the day's line, its price and today's move, the one on the key marked. Every row
