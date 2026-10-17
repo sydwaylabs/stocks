@@ -1,5 +1,5 @@
 import { buildChart, type ChartData } from "./chart-data.js";
-import { compact, formatChange, formatPct, formatPriceLong, trendOf, type Trend } from "./format.js";
+import { compact, formatChange, formatChangeShort, formatPct, formatPriceLong, trendOf, type Trend } from "./format.js";
 import type { Snapshot } from "./quotes.js";
 import type { Earnings, SearchResult } from "./providers/types.js";
 
@@ -125,6 +125,8 @@ export type BoardCard = {
   currency?: string;
   change?: string;
   changePct?: string;
+  /** The move with its currency sign, for the pill when it shows amounts: "+$1.46", "-C$2.31". */
+  changeAmount?: string;
   trend: Trend;
   /** The day's closes, thinned to {@link CARD_POINTS} — a card's sparkline needs no more. */
   points: number[];
@@ -146,6 +148,7 @@ export function buildBoardCard(snap: Snapshot): BoardCard {
     currency: quote.currency,
     change: formatChange(quote.change),
     changePct: formatPct(quote.changePct),
+    changeAmount: formatChangeShort(quote.change, quote.currency),
     trend: trendOf(quote.change ?? quote.changePct),
     points: thin(series?.points ?? [], CARD_POINTS),
     prevClose: quote.prevClose,

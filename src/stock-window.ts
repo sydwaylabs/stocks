@@ -48,6 +48,9 @@ export type StockWindowOptions = {
     showOnKey: (symbol: string) => Promise<void>;
     /** Saves a new order: the same symbols, rearranged. */
     reorder: (symbols: string[]) => Promise<void>;
+    /** The key's "Change as" setting, which the board's pills follow and can switch. */
+    changeAs: () => "percent" | "amount";
+    setChangeAs: (value: "percent" | "amount") => Promise<void>;
   };
   onOpen: (close: () => void) => void;
 };
@@ -90,11 +93,16 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
             return { symbol, name: symbol, trend: "flat", points: [], error: notFound ? "Not found" : "No data" };
           }
         }));
-        return { cards, onKey: options.symbol(), max: 12 };
+        return { cards, onKey: options.symbol(), max: 12, changeAs: board.changeAs() };
       }
       case "focus": {
         if (!board || typeof message.symbol !== "string" || !board.list().includes(message.symbol)) return { ok: false };
         viewing = message.symbol;
+        return { ok: true };
+      }
+      case "changeAs": {
+        if (!board || (message.value !== "percent" && message.value !== "amount")) return { ok: false };
+        await board.setChangeAs(message.value);
         return { ok: true };
       }
       case "reorder": {

@@ -100,7 +100,7 @@ describe("board cards", () => {
       quote: { symbol: "AAPL", name: "Apple Inc.", currency: "USD", price: 343.46, prevClose: 342, change: 1.46, changePct: 0.427, source: "yahoo" },
       details: {}, series: { points, times: points.map((_, i) => i), utcOffset: 0 }, fetchedAt: 0,
     });
-    expect(card).toMatchObject({ symbol: "AAPL", price: "343.46", change: "+1.46", changePct: "+0.43%", trend: "up" });
+    expect(card).toMatchObject({ symbol: "AAPL", price: "343.46", change: "+1.46", changePct: "+0.43%", changeAmount: "+$1.46", trend: "up" });
     expect(card.points.length).toBeLessThanOrEqual(61);
     expect(card.points.at(-1)).toBe(points.at(-1));
   });

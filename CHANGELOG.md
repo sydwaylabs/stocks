@@ -14,7 +14,8 @@ notes and the Marketplace "what's new" text are generated from this file.
 
 - **Watchlist**: up to 12 symbols on one key. Press for the next; hold for a board with a row per
   symbol — price, move and the day's line — where a row opens in place to its chart and stats,
-  can be put on the key or removed, and can be dragged (or moved with ⌥↑ / ⌥↓) to reorder. Optional rotation
+  can be put on the key or removed, and can be dragged (or moved with ⌥↑ / ⌥↓) to reorder. Click a change to switch the whole board,
+  and the key, between % and the amount. Optional rotation
   every 5, 10 or 30 seconds. Add symbols by typing them or with search, which stays open
   to add several.
 - **Price Alert**: turns its key amber, pulsing, when a symbol rises or falls to a price, moves a

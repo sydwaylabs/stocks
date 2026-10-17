@@ -172,6 +172,14 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .wmove { justify-self: end; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; padding: 3px 8px; border-radius: 6px; background: var(--kbd); white-space: nowrap; }
 .wmove.up { background: rgba(41,189,80,.16); }
 .wmove.down { background: rgba(239,75,75,.16); }
+/* Clicking a pill switches every row between % and the amount, as Stocks on iPhone does. */
+.wmove { cursor: pointer; border: 1px solid transparent; position: relative; }
+.wmove:hover { border-color: rgba(255,255,255,.18); }
+.wmove[data-tip]::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); right: 0; z-index: 5;
+  padding: 4px 7px; border-radius: 6px; background: var(--bg); color: var(--fg-dim); border: 1px solid var(--card-line);
+  box-shadow: var(--shadow-lift, 0 6px 18px rgba(0,0,0,.45)); font-size: 11px; font-weight: 400; white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity .1s ease; }
+.wmove[data-tip]:hover::after { opacity: 1; transition-delay: .4s; }
 .werr { grid-column: 3 / -1; justify-self: end; color: var(--slow); font-size: 12.5px; }
 .wpanel { padding: 2px 12px 12px; border-top: 1px solid var(--line); }
 .wpanel .chart-head { margin-top: 10px; }
@@ -376,7 +384,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     $("add").hidden = !onBoard || next !== "board";
     clearInterval(poll);
     if (next === "board") {
-      setFooter([["↑↓", "move"], ["⌥↑↓", "reorder"], ["↵", "open"], ["1–6", "range"], ["a", "add"], ["esc", "close"]]);
+      setFooter([["↑↓", "move"], ["⌥↑↓", "reorder"], ["↵", "open"], ["c", "% / $"], ["1–6", "range"], ["a", "add"], ["esc", "close"]]);
       loadBoard();
       poll = setInterval(function () { loadBoard(); if (openSym) loadDetail(); }, 30000);
     } else if (next === "search") {
@@ -408,6 +416,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
    */
   var boardCards = [];
   var boardOnKey = "";
+  /* The key's "Change as": the pills follow it, and a click on any pill switches it for all. */
+  var changeAs = "percent";
   var openSym = "";
   var cursor = 0;
   var rowEls = {};
@@ -419,6 +429,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       if (mode !== "board") return;
       boardCards = (reply && reply.cards) || [];
       boardOnKey = (reply && reply.onKey) || "";
+      if (reply && reply.changeAs) changeAs = reply.changeAs;
       $("chip").textContent = "Watchlist · " + boardCards.length + " of " + ((reply && reply.max) || 12);
       /* Every row starts closed; the keyboard's place starts on the row the key is showing, so
          Return opens what you were just looking at. */
@@ -474,7 +485,12 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     } else {
       var price = el("div", "wprice", c.price);
       if (c.currency) price.append(el("span", "unit", c.currency));
-      parts.push(sparkSvg(c), price, el("div", "wmove " + c.trend, c.changePct || c.change || ""));
+      var pill = el("div", "wmove " + c.trend, changeAs === "amount" ? (c.changeAmount || c.change || "") : (c.changePct || c.change || ""));
+      pill.dataset.tip = changeAs === "amount" ? "Show as %" : "Show as amount";
+      pill.setAttribute("role", "button");
+      pill.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+      pill.addEventListener("click", function (e) { e.stopPropagation(); toggleChangeAs(); });
+      parts.push(sparkSvg(c), price, pill);
     }
     head.replaceChildren.apply(head, parts);
   }
@@ -575,6 +591,12 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       svgEl("path", { d: "M10 11v6M14 11v6" })
     );
     return svg;
+  }
+
+  function toggleChangeAs() {
+    changeAs = changeAs === "amount" ? "percent" : "amount";
+    renderBoardHeads();
+    post("changeAs", { value: changeAs });
   }
 
   function renderBoardHeads() {
@@ -1114,6 +1136,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (mode === "board") {
       if (e.key === "a") { e.preventDefault(); show("search"); }
+      if (e.key === "c") { e.preventDefault(); toggleChangeAs(); }
       if (e.key === "r") { loadBoard(); if (openSym) { rangeCharts = {}; loadDetail(); if (range !== "1d") selectRange(range); } }
       if ((e.key === "ArrowDown" || e.key === "ArrowUp") && boardCards.length) {
         e.preventDefault();

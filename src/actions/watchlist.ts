@@ -233,6 +233,13 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
           this.schedule(id);
           await this.show(instance);
         },
+        changeAs: () => instance.settings.changeAs,
+        setChangeAs: async (value) => {
+          // The key's own setting, so the key and the board always show the move the same way.
+          instance.settings = { ...instance.settings, changeAs: value };
+          await instance.action.setSettings(instance.settings);
+          await this.show(instance);
+        },
         reorder: async (symbols) => {
           // apply() keeps the key on the symbol it was showing, wherever that has moved to.
           this.apply(instance, { ...instance.settings, symbols: symbols.join(", ") });
