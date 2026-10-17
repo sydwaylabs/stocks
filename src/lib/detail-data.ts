@@ -131,6 +131,8 @@ export type BoardCard = {
   prevClose?: number;
   /** Set instead of a price when the quote could not be had. */
   error?: string;
+  /** The window's own address for the cached logo, when there is one. */
+  logo?: string;
 };
 
 export const CARD_POINTS = 60;

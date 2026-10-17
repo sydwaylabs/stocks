@@ -76,7 +76,13 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         const list = board.list();
         const cards = await Promise.all(list.map(async (symbol): Promise<BoardCard> => {
           try {
-            return buildBoardCard(await options.quotes.snapshot(symbol));
+            const [snap, logo] = await Promise.all([options.quotes.snapshot(symbol), options.quotes.logo(symbol)]);
+            const card = buildBoardCard(snap);
+            if (logo) {
+              logoUrls.set(card.symbol, logo);
+              card.logo = `/asset/logo?symbol=${encodeURIComponent(card.symbol)}`;
+            }
+            return card;
           } catch (error) {
             const notFound = error instanceof ProviderError && error.kind === "not-found";
             return { symbol, name: symbol, trend: "flat", points: [], error: notFound ? "Not found" : "No data" };
@@ -168,7 +174,9 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         serveAsset: async (name, params) => {
           const symbol = params.get("symbol") ?? "";
           const url = logoUrls.get(symbol);
-          if (name !== "logo" || !url || symbol !== shown().toUpperCase()) return null;
+          // Only a symbol on screen: the one shown, or any row of a board.
+          const onScreen = board ? board.list().includes(symbol) : symbol === shown().toUpperCase();
+          if (name !== "logo" || !url || !onScreen) return null;
           return logos.get(symbol, url);
         },
       });

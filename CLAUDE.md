@@ -53,6 +53,9 @@ Every action: hold opens the window, and an empty key opens search on any press.
 - **Chart**: `src/lib/chart-data.ts` lays it out (x positions, ticks as epoch ms); the page
   formats times in the Mac's zone. 1D is on the session clock from Yahoo's `tradingPeriods`;
   longer ranges are spaced by bar. `QuoteService.chart` caches longer ranges for 10 minutes.
+- **Profiles** (name, industry, logo URL) are one Finnhub call per symbol, cached a day in
+  `QuoteService.profile` and shared by the detail view and `QuoteService.logo`, which a board uses
+  for its rows — so a full board costs at most 12 calls a day, well inside 60 a minute.
 - **Logos** are cached in `~/Library/Caches/com.sydwaylabs.stocks/logos/` (`src/lib/logo-cache.ts`,
   30 days, raster images only, sniffed by their bytes) and served to the window at
   `/asset/logo?symbol=…` — a route added to `src/window-host.ts` (`serveAsset`), worth harvesting

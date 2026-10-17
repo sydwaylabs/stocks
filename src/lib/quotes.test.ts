@@ -217,6 +217,33 @@ describe("QuoteService.chart", () => {
   });
 });
 
+describe("QuoteService.logo", () => {
+  it("asks for one profile per symbol, keeps it a day, and shares it with the detail view", async () => {
+    let now = 1_000_000;
+    const providers = stubs({ finnhubProfile: vi.fn(async () => ({ logo: "https://x/AAPL.png", marketCap: 3e12 })) });
+    const service = new QuoteService(() => "k", { providers, now: () => now });
+    await Promise.all([service.logo("AAPL"), service.logo("aapl")]);
+    expect(await service.logo("AAPL")).toBe("https://x/AAPL.png");
+    await service.detailed("AAPL");
+    expect(providers.finnhubProfile).toHaveBeenCalledTimes(1);
+    now += 25 * 60 * 60_000;
+    await service.logo("AAPL");
+    expect(providers.finnhubProfile).toHaveBeenCalledTimes(2);
+  });
+
+  it("has none without a key, for foreign listings, or when Finnhub fails — and retries a failure", async () => {
+    const providers = stubs();
+    expect(await new QuoteService(() => null, { providers }).logo("AAPL")).toBeUndefined();
+    expect(await new QuoteService(() => "k", { providers }).logo("RY.TO")).toBeUndefined();
+    expect(providers.finnhubProfile).not.toHaveBeenCalled();
+    const failing = stubs({ finnhubProfile: vi.fn(fail("rate-limited")) });
+    const service = new QuoteService(() => "k", { providers: failing });
+    expect(await service.logo("AAPL")).toBeUndefined();
+    await service.logo("AAPL");
+    expect(failing.finnhubProfile).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("QuoteService.search", () => {
   it("uses Yahoo, and Finnhub only when Yahoo fails and a key is set", async () => {
     const providers = stubs({ yahooSearch: fail("unavailable") });

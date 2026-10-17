@@ -150,8 +150,11 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .wrow.open { border-color: #6a6a70; }
 .whead { display: grid; grid-template-columns: 30px minmax(0, 1fr) 76px 104px 92px; align-items: center; column-gap: 12px;
   height: 46px; padding: 0 12px; cursor: pointer; }
-.wmark { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(160deg, #4a4a50, #2c2c30); font-size: 14px; font-weight: 700; color: var(--fg); }
+.wmark { position: relative; width: 30px; height: 30px; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(160deg, #4a4a50, #2c2c30); font-size: 14px; font-weight: 700; color: var(--fg);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset; }
+/* The logo over the initial, so a slow or failed image still leaves a mark — as the large tile does. */
+.wmark img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .wwho { min-width: 0; display: flex; flex-direction: column; justify-content: center; line-height: 16px; }
 .wsym { font-size: 13.5px; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
 .wname { font-size: 11.5px; color: var(--fg-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -435,7 +438,22 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (c.symbol === boardOnKey && boardCards.length > 1) sym.append(el("span", "onkey", "ON KEY"));
     who.append(sym);
     if (c.name && c.name !== c.symbol) who.append(el("div", "wname", c.name));
-    var parts = [el("div", "wmark", initialOf(c.name, c.symbol)), who];
+    var mark = el("div", "wmark", initialOf(c.name, c.symbol));
+    var src = c.logo ? c.logo + "&t=" + encodeURIComponent(TOKEN) : "";
+    /* The refresh rebuilds the row's line; keep a logo already showing rather than reload it. */
+    var prev = head.querySelector(".wmark img");
+    if (src && prev && prev.getAttribute("src") === src && !prev.hidden) {
+      mark.append(prev);
+    } else if (src) {
+      var img = document.createElement("img");
+      img.alt = "";
+      img.hidden = true;
+      img.onload = function () { img.hidden = false; };
+      img.onerror = function () { img.remove(); };
+      img.src = src;
+      mark.append(img);
+    }
+    var parts = [mark, who];
     if (c.error) {
       parts.push(el("div", "werr", c.error));
     } else {

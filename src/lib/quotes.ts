@@ -54,6 +54,8 @@ const QUOTE_TTL_MS = 20_000;
 const FUNDAMENTALS_TTL_MS = 60 * 60_000;
 /** A 5-day or longer chart changes slowly enough to keep while the window is open. */
 const RANGE_TTL_MS = 10 * 60_000;
+/** A company's profile — name, industry, logo — changes on the scale of years; a day is plenty. */
+const PROFILE_TTL_MS = 24 * 60 * 60_000;
 /** The earnings date for the key's badge; asked for once every few hours per symbol. */
 const EARNINGS_TTL_MS = 6 * 60 * 60_000;
 
@@ -73,6 +75,8 @@ export class QuoteService {
   private readonly fundamentals = new Map<string, Cached<Details>>();
   private readonly earningsCache = new Map<string, Cached<Earnings | undefined>>();
   private readonly ranges = new Map<string, Cached<Series>>();
+  private readonly profiles = new Map<string, Cached<finnhub.Profile | undefined>>();
+  private readonly profilesInflight = new Map<string, Promise<finnhub.Profile | undefined>>();
 
   constructor(
     private readonly getKey: () => string | null | Promise<string | null>,
@@ -87,6 +91,38 @@ export class QuoteService {
     this.quotes.clear();
     this.fundamentals.clear();
     this.earningsCache.clear();
+    this.profiles.clear();
+  }
+
+  /**
+   * The company's logo URL, for a board's rows: one Finnhub profile request per symbol, kept a day
+   * and shared with the detail view. Needs a key; only plain US tickers have one on the free plan.
+   * Never throws — a missing logo is an initial on a tile, not an error.
+   */
+  async logo(symbol: string): Promise<string | undefined> {
+    return (await this.profile(normalise(symbol)))?.logo;
+  }
+
+  private async profile(id: string): Promise<finnhub.Profile | undefined> {
+    if (!US_TICKER.test(id)) return undefined;
+    const cached = this.profiles.get(id);
+    if (cached && this.now() - cached.at < PROFILE_TTL_MS) return cached.value;
+    const pending = this.profilesInflight.get(id);
+    if (pending) return pending;
+    const request = (async () => {
+      const key = await this.getKey();
+      if (!key) return undefined;
+      try {
+        const value = await this.providers.finnhubProfile(id, key);
+        this.profiles.set(id, { at: this.now(), value });
+        return value;
+      } catch {
+        // Not cached: a rate limit or a blip should not hide the logo for a day.
+        return undefined;
+      }
+    })().finally(() => this.profilesInflight.delete(id));
+    this.profilesInflight.set(id, request);
+    return request;
   }
 
   /**
@@ -202,11 +238,11 @@ export class QuoteService {
     let value: Details = {};
     if (key && snap.quote.source === "finnhub") {
       const [profile, metric, earnings] = await Promise.allSettled([
-        this.providers.finnhubProfile(symbol, key),
+        this.profile(symbol),
         this.providers.finnhubMetric(symbol, key),
         this.earnings(symbol),
       ]);
-      if (profile.status === "fulfilled") {
+      if (profile.status === "fulfilled" && profile.value) {
         const { name: _name, exchange: _exchange, ...rest } = profile.value;
         value = { ...value, ...definedOnly(rest) };
       }
