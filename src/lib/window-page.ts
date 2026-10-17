@@ -173,13 +173,14 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .wacts { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 10px; }
 .wacts button { font-size: 12px; padding: 0 10px; height: 28px; box-sizing: border-box; border-radius: 7px; }
 .wacts .iconbtn { padding: 0; }
-/* Icon buttons as Timekeeper has them: outlined, 28px, Remove in the fail red that fills on hover,
-   and their own tooltip, since the native host does not show the title attribute. */
+/* Icon buttons after Timekeeper's: 28px, with their own tooltip, since the native host does not show
+   the title attribute. Remove is solid red from the start — it should look like what it does — and
+   only lightens a touch under the pointer. (Timekeeper's outlined-until-hover Remove is to follow.) */
 .iconbtn { flex: 0 0 auto; width: 28px; height: 28px; padding: 0; display: inline-grid; place-items: center; position: relative;
   color: var(--fg-dim); background: transparent; border: 1px solid var(--card-line); border-radius: 7px; }
 .iconbtn:hover { background: var(--kbd); color: var(--fg); }
-.iconbtn.remove { color: var(--fail); border-color: rgba(208,59,59,.45); }
-.iconbtn.remove:hover { color: #fff; background: var(--fail); border-color: var(--fail); }
+.iconbtn.remove { color: #fff; background: var(--fail); border-color: var(--fail); }
+.iconbtn.remove:hover { color: #fff; background: #dc4a4a; border-color: #dc4a4a; }
 /* Above the button: it sits at the foot of an open row, where a tip below would be cut off. */
 .iconbtn[data-tip]::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); right: 0; z-index: 5;
   padding: 4px 7px; border-radius: 6px; background: var(--bg); color: var(--fg-dim); border: 1px solid var(--card-line);
