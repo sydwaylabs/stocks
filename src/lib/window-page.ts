@@ -154,7 +154,7 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 
 /* board: a watchlist as rows, one opening in place to the full chart and stats — so the other
    symbols stay in view and comparing is moving down the list, not going in and out of a page. */
-.wl { display: flex; flex-direction: column; gap: 8px; }
+.wl { display: flex; flex-direction: column; gap: 7px; }
 .wrow { position: relative; background: var(--card); border: 1px solid var(--card-line); border-radius: 10px;
   transition: border-color .1s ease, transform 140ms ease; }
 /* Dragging, after Timekeeper's cards: the row lifts and follows the pointer, the others slide aside. */
@@ -164,7 +164,7 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .wrow:hover, .wrow.cursor { border-color: #6a6a70; }
 .wrow.open { border-color: #6a6a70; }
 .whead { display: grid; grid-template-columns: 32px minmax(0, 1fr) 76px 104px 88px; align-items: center; column-gap: 14px;
-  height: 54px; padding: 0 14px; cursor: pointer; }
+  height: 50px; padding: 0 14px; cursor: pointer; }
 .wmark { position: relative; width: 32px; height: 32px; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center;
   background: linear-gradient(160deg, #4a4a50, #2c2c30); font-size: 14px; font-weight: 700; color: var(--fg);
   box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset; }
