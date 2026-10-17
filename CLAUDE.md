@@ -83,6 +83,10 @@ Every action: hold opens the window, and an empty key opens search on any press.
   `board`, `snapshot` and `chart` messages). 📌 sets the key's `pinWindow`: `serveWindow`'s
   `keepOpen` (added to `src/window-host.ts`, a kit candidate) skips the idle close, and
   `onWillDisappear` leaves a pinned window open. After Quick Clips' stay-open pin.
+- **Board sort** (`boardSort`, remembered per key): the plugin sorts with `sortCards` before
+  sending; the list's own order — and the key's rotation — never change. Drag and ⌥↑↓ work only
+  in "custom" (My order). Class names in the page share one namespace: the menu's tick is
+  `mtick` because `tick` is the chart axis label.
 - **Palette departure**: the chart's range selector is a neutral grey pill, not the house
   `--accent` green — in the detail view green means "price up", so a green selection reads as
   data. Search keeps the house green, which has no price colours to collide with.
