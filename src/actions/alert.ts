@@ -94,7 +94,8 @@ export class PriceAlert extends SingletonAction<AlertSettings> {
     if (!instance) return;
     instance.visible = false;
     ticker.clear(pulseId(ev.action.id));
-    instance.closeWindow?.();
+    // A pinned window stays until it is closed by hand.
+    if (!instance.settings.pinWindow) instance.closeWindow?.();
   }
 
   override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<AlertSettings>): Promise<void> {
@@ -290,6 +291,14 @@ export class PriceAlert extends SingletonAction<AlertSettings> {
     instance.closeWindow = () => { /* replaced once the window is up */ };
     void openStockWindow({
       quotes,
+      // The key remembers it; a pinned window outlives folder changes and the idle timeout.
+      pinned: {
+        get: () => instance.settings.pinWindow,
+        set: async (on) => {
+          instance.settings = { ...instance.settings, pinWindow: on };
+          await instance.action.setSettings(instance.settings);
+        },
+      },
       symbol: () => instance.settings.symbol,
       startIn,
       unbidden: options.unbidden,

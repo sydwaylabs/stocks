@@ -10,6 +10,8 @@ export type TickerSettings = {
   intervalMin?: number;
   display?: "price" | "change";
   changeAs?: "percent" | "amount";
+  /** Keep this key's window open until it is closed by hand: no idle close, none on a folder change. */
+  pinWindow?: boolean;
 };
 
 /** Fields the inspector edits, written once on a new key so it never shows a placeholder as a value. */
@@ -17,7 +19,7 @@ export const EDITABLE = ["symbol", "intervalMin", "display", "changeAs"] as cons
 
 export const INTERVALS = [1, 5, 15] as const;
 
-const DEFAULTS: Required<TickerSettings> = { symbol: "", name: "", intervalMin: 5, display: "price", changeAs: "percent" };
+const DEFAULTS: Required<TickerSettings> = { symbol: "", name: "", intervalMin: 5, display: "price", changeAs: "percent", pinWindow: false };
 
 /**
  * One place where saved settings are merged and coerced. sdpi-components saves every field as a
@@ -33,6 +35,7 @@ export function mergeWithDefaults(saved: Partial<TickerSettings> | undefined): R
     intervalMin: (INTERVALS as readonly number[]).includes(interval) ? interval : DEFAULTS.intervalMin,
     display: base.display === "change" ? "change" : "price",
     changeAs: base.changeAs === "amount" ? "amount" : "percent",
+    pinWindow: base.pinWindow === true,
   };
 }
 
@@ -47,6 +50,7 @@ export type AlertSettings = {
   target?: number;
   /** Open the window when the alert fires, as well as turning the key amber. */
   popup?: boolean;
+  pinWindow?: boolean;
   /** Persisted so a fired alert is still fired after a restart. */
   phase?: Phase;
   firedAt?: number | null;
@@ -56,7 +60,7 @@ export type AlertSettings = {
 export const ALERT_EDITABLE = ["symbol", "condition", "target", "popup"] as const;
 
 const ALERT_DEFAULTS: Required<AlertSettings> = {
-  symbol: "", name: "", condition: "above", target: 0, popup: true, phase: "armed", firedAt: null, firedPrice: null,
+  symbol: "", name: "", condition: "above", target: 0, popup: true, pinWindow: false, phase: "armed", firedAt: null, firedPrice: null,
 };
 
 export function mergeAlert(saved: Partial<AlertSettings> | undefined): Required<AlertSettings> {
@@ -69,6 +73,7 @@ export function mergeAlert(saved: Partial<AlertSettings> | undefined): Required<
     target: Number.isFinite(target) && target > 0 ? target : 0,
     // sdpi-checkbox saves a boolean; anything else from an older version reads as its default.
     popup: base.popup === false || base.popup === ("false" as unknown) ? false : true,
+    pinWindow: base.pinWindow === true,
     phase: base.phase === "fired" || base.phase === "cleared" ? base.phase : "armed",
     firedAt: typeof base.firedAt === "number" ? base.firedAt : null,
     firedPrice: typeof base.firedPrice === "number" ? base.firedPrice : null,
@@ -84,6 +89,7 @@ export type WatchlistSettings = {
   rotateSec?: number;
   display?: "price" | "change";
   changeAs?: "percent" | "amount";
+  pinWindow?: boolean;
 };
 
 export const WATCHLIST_EDITABLE = ["symbols", "rotateSec", "display", "changeAs"] as const;
@@ -91,13 +97,14 @@ export const ROTATE_CHOICES = [0, 5, 10, 30] as const;
 export const WATCHLIST_MAX = 12;
 
 export function mergeWatchlist(saved: Partial<WatchlistSettings> | undefined): Required<WatchlistSettings> {
-  const base = { symbols: "", rotateSec: 0, display: "price", changeAs: "percent", ...saved };
+  const base = { symbols: "", rotateSec: 0, display: "price", changeAs: "percent", pinWindow: false, ...saved };
   const rotate = Number(base.rotateSec);
   return {
     symbols: parseSymbols(typeof base.symbols === "string" ? base.symbols : "").join(", "),
     rotateSec: (ROTATE_CHOICES as readonly number[]).includes(rotate) ? rotate : 0,
     display: base.display === "change" ? "change" : "price",
     changeAs: base.changeAs === "amount" ? "amount" : "percent",
+    pinWindow: base.pinWindow === true,
   };
 }
 

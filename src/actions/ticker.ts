@@ -95,7 +95,8 @@ export class Ticker extends SingletonAction<TickerSettings> {
     // kept, so coming back is instant.
     ticker.clear(tickId(ev.action.id));
     const instance = this.instances.get(ev.action.id);
-    instance?.closeWindow?.();
+    // A pinned window stays until it is closed by hand.
+    if (!instance?.settings.pinWindow) instance?.closeWindow?.();
   }
 
   override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<TickerSettings>): Promise<void> {
@@ -247,6 +248,14 @@ export class Ticker extends SingletonAction<TickerSettings> {
 
     void openStockWindow({
       quotes,
+      // The key remembers it; a pinned window outlives folder changes and the idle timeout.
+      pinned: {
+        get: () => instance.settings.pinWindow,
+        set: async (on) => {
+          instance.settings = { ...instance.settings, pinWindow: on };
+          await instance.action.setSettings(instance.settings);
+        },
+      },
       symbol: () => (startIn === "search" ? "" : instance.settings.symbol),
       onSelect: async (result) => {
         startIn = undefined;

@@ -210,6 +210,17 @@ describe("QuoteService.chart", () => {
     expect(providers.yahooRange).toHaveBeenCalledTimes(2);
   });
 
+  it("asks past the cache when forced, as the window's refresh does", async () => {
+    const providers = stubs();
+    const service = new QuoteService(() => null, { providers });
+    await service.chart("AAPL", "5d");
+    await service.chart("AAPL", "5d", { force: true });
+    expect(providers.yahooRange).toHaveBeenCalledTimes(2);
+    await service.chart("AAPL", "1d");
+    await service.chart("AAPL", "1d", { force: true });
+    expect(providers.yahooChart).toHaveBeenCalledTimes(2);
+  });
+
   it("fetches today's chart itself when the quote came without one", async () => {
     const providers = stubs({ yahooChart: fail("unavailable") });
     await new QuoteService(() => "k", { providers }).chart("AAPL", "1d");

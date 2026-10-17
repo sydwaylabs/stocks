@@ -26,6 +26,8 @@ export type WindowInit = {
   alert?: boolean;
   /** A board that opens with its add popover already open — an empty watchlist's press. */
   openAdd?: boolean;
+  /** The window is pinned open (stays until closed by hand). */
+  pinned?: boolean;
 };
 
 export const WINDOW_WIDTH = 640;
@@ -274,6 +276,12 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .pop-note.good { color: var(--good); }
 .pop-note.bad { color: var(--slow); }
 .iconbtn.on { background: var(--kbd); color: var(--fg); }
+/* Pinned: pressed in, in white rather than Quick Clips' green, which here would read as "up". */
+#pin.on { background: #4a4a50; border-color: #6a6a70; color: #fff; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#refresh.spinning svg { animation: spin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { #refresh.spinning svg { animation: none; opacity: .5; } }
+.bar .iconbtn + .iconbtn, .bar .iconbtn + button { margin-left: 2px; }
 
 /* One tooltip for the page (patterns/page-tip): the native host shows no title attribute, and a
    tip on the element itself is clipped by the scrolling board. Hints are sentences, so they wrap. */
@@ -303,6 +311,9 @@ ${TIP_CSS}
   <span class="chip" id="chip"></span>
   <span class="spacer"></span>
   <!-- In the corner where + is on the board: one place, its job set by the view. -->
+  <!-- Refresh and pin, on the views that show prices; then the view's own button. -->
+  <button id="refresh" class="iconbtn" aria-label="Refresh" data-hint="Refresh now" hidden></button>
+  <button id="pin" class="iconbtn" aria-label="Pin open" aria-pressed="false" data-hint="Keep this window open" hidden></button>
   <button id="back" class="iconbtn" aria-label="Back to watchlist" data-hint="Back to watchlist" hidden></button>
   <!-- Neutral, not Timekeeper's green Add: on this screen green means a price went up. -->
   <button id="add" class="iconbtn" aria-label="Add symbol" data-hint="Add symbol" hidden></button>
@@ -488,6 +499,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     $("change").hidden = next !== "detail" || INIT.canChange === false;
     /* A board's views lead back to it; its own view offers Add. */
     $("back").hidden = !onBoard || next === "board";
+    $("refresh").hidden = next === "search";
+    $("pin").hidden = next === "search";
     $("add").hidden = !onBoard || next !== "board";
     clearInterval(poll);
     if (next === "board") {
@@ -507,10 +520,67 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       $("chip").textContent = symbol;
       setFooter(INIT.canChange === false
         ? [["1–6", "range"], ["r", "refresh"], ["esc", onBoard ? "back" : "close"]]
-        : [["1–6", "range"], ["r", "refresh"], ["s", "change symbol"], ["esc", "close"]]);
+        : [["1–6", "range"], ["r", "refresh"], ["p", "pin"], ["s", "change symbol"], ["esc", "close"]]);
       loadDetail();
       poll = setInterval(loadDetail, 30000);
     }
+  }
+
+  /* ---- refresh and pin ---- */
+
+  /* Past every cache, for someone who wants the latest price now; the icon turns while it works. */
+  var refreshing = false;
+  function refreshNow() {
+    if (refreshing || mode === "search") return;
+    refreshing = true;
+    var btn = $("refresh");
+    btn.classList.add("spinning");
+    rangeCharts = {};
+    var jobs = [];
+    if (mode === "board") {
+      jobs.push(loadBoard(true));
+      if (openSym) jobs.push(loadDetail(true));
+    } else {
+      jobs.push(loadDetail(true));
+    }
+    if ((mode === "detail" || openSym) && range !== "1d") selectRange(range, true);
+    var started = Date.now();
+    Promise.all(jobs).catch(function () {}).then(function () {
+      /* At least one turn, so a fast answer still reads as having happened. */
+      setTimeout(function () { refreshing = false; btn.classList.remove("spinning"); }, Math.max(0, 600 - (Date.now() - started)));
+    });
+  }
+
+  var pinned = !!INIT.pinned;
+  function paintPin() {
+    var b = $("pin");
+    b.classList.toggle("on", pinned);
+    b.setAttribute("aria-pressed", pinned ? "true" : "false");
+    b.dataset.hint = pinned ? "Pinned: stays open until you close it" : "Keep this window open";
+  }
+  function togglePin() {
+    if (mode === "search") return;
+    pinned = !pinned;
+    paintPin();
+    post("pin", { on: pinned }).then(function (reply) {
+      if (reply && typeof reply.pinned === "boolean" && reply.pinned !== pinned) { pinned = reply.pinned; paintPin(); }
+    });
+  }
+
+  /* Lucide rotate-cw (ISC). */
+  function refreshIcon() {
+    var svg = svgEl("svg", { viewBox: "0 0 24 24", width: 15, height: 15, fill: "none", stroke: "currentColor",
+      "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
+    svg.append(svgEl("path", { d: "M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" }), svgEl("path", { d: "M21 3v5h-5" }));
+    return svg;
+  }
+
+  /* Lucide pin (ISC), as Quick Clips' "keep this window open". */
+  function pinIcon() {
+    var svg = svgEl("svg", { viewBox: "0 0 24 24", width: 15, height: 15, fill: "none", stroke: "currentColor",
+      "stroke-width": 1.8, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
+    svg.append(svgEl("path", { d: "M12 17v5" }), svgEl("path", { d: "M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" }));
+    return svg;
   }
 
   /* ---- board ---- */
@@ -531,8 +601,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   var boardOrder = "";
   var firstBoard = true;
 
-  function loadBoard() {
-    return post("board").then(function (reply) {
+  function loadBoard(force) {
+    return post("board", { force: force === true }).then(function (reply) {
       if (mode !== "board") return;
       boardCards = (reply && reply.cards) || [];
       boardOnKey = (reply && reply.onKey) || "";
@@ -989,8 +1059,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
 
   /* ---- detail ---- */
 
-  function loadDetail() {
-    return post("snapshot").then(function (reply) {
+  function loadDetail(force) {
+    return post("snapshot", { force: force === true }).then(function (reply) {
       if (mode !== "detail" && !(mode === "board" && openSym)) return;
       if (reply && reply.detail) { renderDetail(reply.detail); loadAlert(); }
       else showDetailError((reply && reply.message) || "No quote available.");
@@ -1092,7 +1162,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     return d.getMonth() === 0 ? String(d.getFullYear()) : d.toLocaleDateString([], { month: "short" });
   }
 
-  function selectRange(next) {
+  function selectRange(next, force) {
     range = next;
     Array.prototype.forEach.call($("ranges").children, function (b) {
       var on = b.getAttribute("data-range") === next;
@@ -1103,7 +1173,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (rangeCharts[next]) { renderChart(rangeCharts[next]); return; }
     chartNotice("Loading…");
     var forSymbol = symbol;
-    post("chart", { range: next }).then(function (reply) {
+    post("chart", { range: next, force: force === true }).then(function (reply) {
       if (forSymbol !== symbol) return;
       if (reply && reply.chart) rangeCharts[next] = reply.chart;
       if (range !== next) return;
@@ -1515,6 +1585,11 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     debounce = setTimeout(runSearch, 250);
   });
 
+  $("refresh").append(refreshIcon());
+  $("refresh").addEventListener("click", refreshNow);
+  $("pin").append(pinIcon());
+  $("pin").addEventListener("click", togglePin);
+  paintPin();
   $("change").append(swapIcon());
   $("change").addEventListener("click", function (e) { e.stopPropagation(); toggleAdd(false, "change"); });
   $("back").append(chevronLeftIcon());
@@ -1566,7 +1641,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (mode === "board") {
       if (e.key === "a") { e.preventDefault(); toggleAdd(true, "add"); }
       if (e.key === "c") { e.preventDefault(); toggleChangeAs(); }
-      if (e.key === "r") { loadBoard(); if (openSym) { rangeCharts = {}; loadDetail(); if (range !== "1d") selectRange(range); } }
+      if (e.key === "r") refreshNow();
+      if (e.key === "p") togglePin();
       if ((e.key === "ArrowDown" || e.key === "ArrowUp") && boardCards.length) {
         e.preventDefault();
         cursor = (cursor + (e.key === "ArrowDown" ? 1 : boardCards.length - 1)) % boardCards.length;
@@ -1579,7 +1655,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       if (d >= 0 && openSym) selectRange(["1d", "5d", "1mo", "6mo", "ytd", "1y"][d]);
       return;
     }
-    if (e.key === "r") { rangeCharts = {}; loadDetail(); if (range !== "1d") selectRange(range); }
+    if (e.key === "r") refreshNow();
+    if (e.key === "p") togglePin();
     var digit = ["1", "2", "3", "4", "5", "6"].indexOf(e.key);
     if (digit >= 0) selectRange(["1d", "5d", "1mo", "6mo", "ytd", "1y"][digit]);
     if (e.key === "s" && INIT.canChange !== false && mode === "detail") { e.preventDefault(); toggleAdd(true, "change"); }

@@ -111,6 +111,11 @@ export type ServeWindowOptions = {
   onWarn?: (message: string) => void;
   /** Abandon the window after this long without a ping. Polling deliberately does not count. */
   timeoutMs: number;
+  /**
+   * Asked when the idle timeout comes round: true keeps the window open for another period. For a
+   * window the user has pinned, which they have said to keep until they close it.
+   */
+  keepOpen?: () => boolean;
   width: number;
   height: number;
   /**
@@ -191,7 +196,7 @@ export async function serveWindow(
     function armIdleTimer(): void {
       if (settled) return;
       if (idleTimer) clearTimeout(idleTimer);
-      idleTimer = setTimeout(finish, options.timeoutMs);
+      idleTimer = setTimeout(() => (options.keepOpen?.() ? armIdleTimer() : finish()), options.timeoutMs);
     }
 
     function sendJson(res: ServerResponse, payload: unknown): void {

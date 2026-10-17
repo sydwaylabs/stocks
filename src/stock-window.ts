@@ -60,6 +60,8 @@ export type StockWindowOptions = {
    * cannot swallow what someone is typing in another app (references/native-window.md).
    */
   unbidden?: boolean;
+  /** The key's pin: a pinned window stays until closed by hand, and remembers it next time. */
+  pinned?: { get: () => boolean; set: (on: boolean) => Promise<void> };
   /** A Price Alert's window: its rule, shown and edited beside the chart. */
   alert?: {
     get: () => AlertView;
@@ -95,9 +97,11 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
       case "board": {
         if (!board) return {};
         const list = board.list();
+        // A press of refresh asks past the cache; the minute's poll does not.
+        const force = message.force === true;
         const cards = await Promise.all(list.map(async (symbol): Promise<BoardCard> => {
           try {
-            const [snap, logo] = await Promise.all([options.quotes.snapshot(symbol), options.quotes.logo(symbol)]);
+            const [snap, logo] = await Promise.all([options.quotes.snapshot(symbol, { force }), options.quotes.logo(symbol)]);
             const card = buildBoardCard(snap);
             if (logo) {
               logoUrls.set(card.symbol, logo);
@@ -116,6 +120,10 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         viewing = message.symbol;
         return { ok: true };
       }
+      case "pin":
+        if (!options.pinned || typeof message.on !== "boolean") return {};
+        await options.pinned.set(message.on);
+        return { pinned: options.pinned.get() };
       case "alert":
         return options.alert ? { alert: options.alert.get() } : {};
       case "setAlert": {
@@ -163,6 +171,7 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         const symbol = shown();
         if (!symbol) return { message: "No symbol is set on this key." };
         try {
+          if (message.force === true) await options.quotes.snapshot(symbol, { force: true });
           const detail = buildDetail(await options.quotes.detailed(symbol));
           if (detail.website && !links.includes(detail.website)) links.push(detail.website);
           if (detail.logo) {
@@ -180,7 +189,7 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         const range = message.range as ChartRange;
         if (!symbol || !CHART_RANGES.includes(range)) return { message: "No chart for that." };
         try {
-          return { chart: buildChart(await options.quotes.chart(symbol, range), range) };
+          return { chart: buildChart(await options.quotes.chart(symbol, range, { force: message.force === true }), range) };
         } catch (error) {
           return { message: describe(error, symbol) };
         }
@@ -218,7 +227,9 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
           canChange: options.canChange,
           alert: !!options.alert,
           openAdd: options.openAdd,
+          pinned: options.pinned?.get() ?? false,
         }),
+        keepOpen: () => options.pinned?.get() ?? false,
         hostArgs: options.unbidden ? ["--no-focus"] : undefined,
         onMessage,
         onOpen: options.onOpen,

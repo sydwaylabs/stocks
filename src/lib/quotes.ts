@@ -173,15 +173,15 @@ export class QuoteService {
    * one Yahoo request each, asked for only when picked. Always Yahoo: Finnhub's free plan has no
    * price history.
    */
-  async chart(symbol: string, range: ChartRange): Promise<Series> {
+  async chart(symbol: string, range: ChartRange, options: { force?: boolean } = {}): Promise<Series> {
     const id = normalise(symbol);
     if (range === "1d") {
-      const snap = await this.snapshot(id);
+      const snap = await this.snapshot(id, options);
       if (snap.series && snap.series.points.length > 1) return snap.series;
     }
     const key = `${id}:${range}`;
     const cached = this.ranges.get(key);
-    if (cached && this.now() - cached.at < (range === "1d" ? QUOTE_TTL_MS : RANGE_TTL_MS)) return cached.value;
+    if (!options.force && cached && this.now() - cached.at < (range === "1d" ? QUOTE_TTL_MS : RANGE_TTL_MS)) return cached.value;
     const { series } = await this.providers.yahooRange(id, range);
     this.ranges.set(key, { at: this.now(), value: series });
     return series;

@@ -79,6 +79,10 @@ Every action: hold opens the window, and an empty key opens search on any press.
   gets the one page tooltip (stat labels, change pills, the trash button). Hint texts live in
   `HINTS` in `src/lib/detail-data.ts`.
 - **Watchlist key dots** sit on the bottom edge (y=135), matching Timekeeper's world clock.
+- **Pin and refresh**: the window's ⟳ forces past the quote and chart caches (`force` on the
+  `board`, `snapshot` and `chart` messages). 📌 sets the key's `pinWindow`: `serveWindow`'s
+  `keepOpen` (added to `src/window-host.ts`, a kit candidate) skips the idle close, and
+  `onWillDisappear` leaves a pinned window open. After Quick Clips' stay-open pin.
 - **Palette departure**: the chart's range selector is a neutral grey pill, not the house
   `--accent` green — in the detail view green means "price up", so a green selection reads as
   data. Search keeps the house green, which has no price colours to collide with.

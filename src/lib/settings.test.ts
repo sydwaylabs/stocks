@@ -4,7 +4,7 @@ import { addSymbol, mergeAlert, mergeWatchlist, mergeWithDefaults, parseSymbols 
 
 describe("mergeWithDefaults", () => {
   it("fills a new key with defaults", () => {
-    expect(mergeWithDefaults({})).toEqual({ symbol: "", name: "", intervalMin: 5, display: "price", changeAs: "percent" });
+    expect(mergeWithDefaults({})).toEqual({ symbol: "", name: "", intervalMin: 5, display: "price", changeAs: "percent", pinWindow: false });
     expect(mergeWithDefaults(undefined).intervalMin).toBe(5);
   });
 
@@ -63,7 +63,7 @@ describe("watchlist settings", () => {
 
   it("normalises the stored text and clamps rotation to the choices", () => {
     expect(mergeWatchlist({ symbols: "aapl msft", rotateSec: "10" as unknown as number })).toEqual({
-      symbols: "AAPL, MSFT", rotateSec: 10, display: "price", changeAs: "percent",
+      symbols: "AAPL, MSFT", rotateSec: 10, display: "price", changeAs: "percent", pinWindow: false,
     });
     expect(mergeWatchlist({ rotateSec: 7 }).rotateSec).toBe(0);
   });

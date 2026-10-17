@@ -93,7 +93,9 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
     // Nothing to keep running: rotation and refresh are only for a key someone can see.
     ticker.clear(rotateId(ev.action.id));
     ticker.clear(refreshId(ev.action.id));
-    this.instances.get(ev.action.id)?.closeWindow?.();
+    // A pinned window stays until it is closed by hand.
+    const instance = this.instances.get(ev.action.id);
+    if (!instance?.settings.pinWindow) instance?.closeWindow?.();
   }
 
   override async onDidReceiveSettings(ev: DidReceiveSettingsEvent<WatchlistSettings>): Promise<void> {
@@ -222,6 +224,14 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
     instance.closeWindow = () => { /* replaced once the window is up */ };
     void openStockWindow({
       quotes,
+      // The key remembers it; a pinned window outlives folder changes and the idle timeout.
+      pinned: {
+        get: () => instance.settings.pinWindow,
+        set: async (on) => {
+          instance.settings = { ...instance.settings, pinWindow: on };
+          await instance.action.setSettings(instance.settings);
+        },
+      },
       symbol: () => instance.list[instance.index] ?? "",
       // Always the board; adding opens it with its add popover already open, so the list being
       // built is in view behind the search.
