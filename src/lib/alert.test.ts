@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { acknowledge, describeCondition, distance, hasCleared, isMet, needsTarget, rearmLine, step, type Phase } from "./alert.js";
+import { acknowledge, alertView, describeCondition, distance, hasCleared, isMet, needsTarget, rearmLine, step, type Phase } from "./alert.js";
 
 describe("isMet", () => {
   it("compares the price with the target", () => {
@@ -78,5 +78,25 @@ describe("words for the key", () => {
   it("knows which conditions need a typed target", () => {
     expect(needsTarget("above")).toBe(true);
     expect(needsTarget("high-52w")).toBe(false);
+  });
+});
+
+describe("alertView", () => {
+  const base = { condition: "above" as const, target: 350, phase: "armed" as const, firedAt: null, firedPrice: null };
+
+  it("says what an armed alert is waiting for", () => {
+    expect(alertView(base, { price: 343.46 })).toMatchObject({ caption: "Above 350.00", status: "Watching — 1.9% away.", needsTarget: true });
+  });
+
+  it("asks for a target when there is none", () => {
+    expect(alertView({ ...base, target: 0 }, null).status).toMatch(/click the chart/);
+    expect(alertView({ ...base, condition: "high-52w", target: 0 }, null).needsTarget).toBe(false);
+  });
+
+  it("reports a fired alert and a cleared one", () => {
+    const fired = alertView({ ...base, phase: "fired", firedAt: 5, firedPrice: 351.2 }, { price: 351.2 });
+    expect(fired).toMatchObject({ phase: "fired", firedAt: 5 });
+    expect(fired.status).toMatch(/^Fired at 351\.20/);
+    expect(alertView({ ...base, phase: "cleared" }, { price: 351 }).status).toBe("Cleared. Watches again below 348.25");
   });
 });

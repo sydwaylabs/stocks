@@ -6,6 +6,7 @@ import { buildChart } from "./lib/chart-data.js";
 import { buildBoardCard, buildDetail, SearchSession, typeLabel, type BoardCard } from "./lib/detail-data.js";
 import { LogoCache } from "./lib/logo-cache.js";
 import { CHART_RANGES, ProviderError, type ChartRange, type SearchResult } from "./lib/providers/types.js";
+import { CONDITIONS, type AlertView, type Condition } from "./lib/alert.js";
 import type { QuoteService } from "./lib/quotes.js";
 import { renderPage, WINDOW_HEIGHT, WINDOW_WIDTH } from "./lib/window-page.js";
 import { findHosts, serveWindow, WindowLaunchError, type WindowMessage } from "./window-host.js";
@@ -51,6 +52,12 @@ export type StockWindowOptions = {
     /** The key's "Change as" setting, which the board's pills follow and can switch. */
     changeAs: () => "percent" | "amount";
     setChangeAs: (value: "percent" | "amount") => Promise<void>;
+  };
+  /** A Price Alert's window: its rule, shown and edited beside the chart. */
+  alert?: {
+    get: () => AlertView;
+    set: (condition: Condition, target: number) => Promise<AlertView>;
+    clear: () => Promise<AlertView>;
   };
   onOpen: (close: () => void) => void;
 };
@@ -100,6 +107,19 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         viewing = message.symbol;
         return { ok: true };
       }
+      case "alert":
+        return options.alert ? { alert: options.alert.get() } : {};
+      case "setAlert": {
+        if (!options.alert) return {};
+        const condition = message.condition as Condition;
+        const target = Number(message.target);
+        if (!CONDITIONS.includes(condition) || !Number.isFinite(target) || target < 0 || target > 1e9) {
+          return { message: "That target is not a number the alert can use." };
+        }
+        return { alert: await options.alert.set(condition, target) };
+      }
+      case "clearAlert":
+        return options.alert ? { alert: await options.alert.clear() } : {};
       case "changeAs": {
         if (!board || (message.value !== "percent" && message.value !== "amount")) return { ok: false };
         await board.setChangeAs(message.value);
@@ -182,6 +202,7 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
           windowTitle,
           adding: options.adding,
           canChange: options.canChange,
+          alert: !!options.alert,
         }),
         onMessage,
         onOpen: options.onOpen,

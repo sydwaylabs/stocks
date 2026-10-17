@@ -22,6 +22,8 @@ export type WindowInit = {
   adding?: boolean;
   /** Offer "Change symbol" in the detail view. Off for a watchlist, whose list is edited elsewhere. */
   canChange?: boolean;
+  /** A Price Alert's window: show its rule beside the chart, editable, and let the chart pick a price. */
+  alert?: boolean;
 };
 
 export const WINDOW_WIDTH = 640;
@@ -205,6 +207,31 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .wacts .meta { margin: 0 auto 0 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .board-empty { color: var(--fg-dim); text-align: center; padding: 40px 10px; }
 
+/* A Price Alert's rule, beside its chart: amber, the alert's colour on the key, edge-marked. */
+.abox { margin-top: 12px; background: var(--card); border: 1px solid var(--card-line); border-left: 3px solid #fab219;
+  border-radius: 8px; padding: 9px 12px 10px; }
+.abox.fired { background: rgba(250,178,25,.10); border-color: #fab219; }
+.abox-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; min-width: 0; }
+.abox-title { font-size: 12px; font-weight: 650; color: #fab219; letter-spacing: .02em; }
+.abox-status { font-size: 12px; color: var(--fg-dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.abox-status.err { color: var(--fail); }
+.abox-form { display: flex; gap: 8px; align-items: center; }
+.abox select, .abox input { font: inherit; font-size: 13px; color: var(--fg); background: #1d1d1d; border: 1px solid var(--card-line);
+  border-radius: 7px; height: 30px; box-sizing: border-box; padding: 0 8px; }
+.abox select { flex: 0 0 auto; }
+.abox input { width: 120px; font-variant-numeric: tabular-nums; }
+.abox .spacer { flex: 1; }
+.abox button { height: 30px; border-radius: 7px; padding: 0 12px; font-size: 12.5px; }
+.abox button.amber { background: #fab219; border-color: #fab219; color: #1f1600; font-weight: 650; }
+.abox button.amber:hover { background: #ffc23a; border-color: #ffc23a; }
+.abox button.amber:disabled { background: transparent; border-color: var(--card-line); color: var(--fg-faint); }
+/* The target on the chart, and, in an alert's window, the level under the pointer, to click. */
+.aline-label { position: absolute; left: 6px; transform: translateY(-50%); font-size: 10.5px; font-weight: 650; color: #1f1600;
+  background: #fab219; border-radius: 4px; padding: 0 5px; pointer-events: none; white-space: nowrap; }
+.aline-label.edge { transform: none; }
+.yguide { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(250,178,25,.55); pointer-events: none; }
+.yguide span { position: absolute; right: 6px; top: -9px; font-size: 10.5px; color: #fab219; background: var(--card); padding: 0 4px; border-radius: 3px; }
+
 /* One tooltip for the page (patterns/page-tip): the native host shows no title attribute, and a
    tip on the element itself is clipped by the scrolling board. Hints are sentences, so they wrap. */
 ${TIP_CSS}
@@ -257,6 +284,26 @@ ${TIP_CSS}
   </div>
   <!-- The chart, stats and source line. On a watchlist board this whole block moves into the
        open row; elsewhere it stays here under the price. -->
+  <section class="abox" id="d-alert" hidden>
+    <div class="abox-head">
+      <span class="abox-title">ALERT</span>
+      <span class="abox-status" id="a-status"></span>
+    </div>
+    <div class="abox-form">
+      <select id="a-cond" aria-label="Alert when">
+        <option value="above">Price rises to</option>
+        <option value="below">Price falls to</option>
+        <option value="up-pct">Up today by %</option>
+        <option value="down-pct">Down today by %</option>
+        <option value="high-52w">New 52-week high</option>
+        <option value="low-52w">New 52-week low</option>
+      </select>
+      <input id="a-target" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Target">
+      <span class="spacer"></span>
+      <button id="a-clear" hidden>Clear</button>
+      <button id="a-set" class="amber">Set alert</button>
+    </div>
+  </section>
   <div id="d-body">
   <div class="chart-head">
     <div class="seg" id="ranges" role="tablist" aria-label="Chart range">
@@ -319,6 +366,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   /* What is drawn now, and where the pointer is over it (0–1), so a redraw keeps the crosshair. */
   var shown = null;
   var hoverAt = null;
+  var hoverY = null;
   var drawnKey = "";
   /* Today's move, from the quote; shown under the price while the 1D chart is up. */
   var today = null;
@@ -755,7 +803,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   function loadDetail() {
     return post("snapshot").then(function (reply) {
       if (mode !== "detail" && !(mode === "board" && openSym)) return;
-      if (reply && reply.detail) renderDetail(reply.detail);
+      if (reply && reply.detail) { renderDetail(reply.detail); loadAlert(); }
       else showDetailError((reply && reply.message) || "No quote available.");
     }).catch(function () { showDetailError("The plugin is not responding."); });
   }
@@ -957,6 +1005,133 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     }
   }
 
+  /* ---- a Price Alert's rule ---- */
+
+  var alertDirty = false;
+  var alertNow = null;
+
+  function loadAlert() {
+    if (!INIT.alert) return;
+    post("alert").then(function (reply) { if (reply && reply.alert) renderAlert(reply.alert); });
+  }
+
+  function fmtLevel(v) {
+    return Math.abs(v) >= 1 ? v.toFixed(2) : String(Number(v.toPrecision(4)));
+  }
+
+  function renderAlert(a) {
+    alertNow = a;
+    var box = $("d-alert");
+    box.hidden = false;
+    box.classList.toggle("fired", a.phase === "fired");
+    var status = $("a-status");
+    status.className = "abox-status";
+    status.textContent = a.status;
+    $("a-clear").hidden = a.phase !== "fired";
+    /* What someone is typing is theirs until they set it; a refresh only updates the status. */
+    if (!alertDirty) {
+      $("a-cond").value = a.condition;
+      $("a-target").value = a.target > 0 ? fmtLevel(a.target) : "";
+    }
+    syncAlertForm();
+    fit();
+  }
+
+  function syncAlertForm() {
+    var cond = $("a-cond").value;
+    var input = $("a-target");
+    var priced = cond === "above" || cond === "below";
+    input.hidden = cond === "high-52w" || cond === "low-52w";
+    input.placeholder = priced ? "Price" : "Percent";
+    $("a-set").disabled = !alertDirty;
+    /* An edit not yet set says so, rather than the saved rule's status sitting beside it. */
+    var status = $("a-status");
+    if (alertDirty && status.className.indexOf("err") < 0) status.textContent = "Not saved yet. Press Set alert, or Return.";
+    else if (!alertDirty && alertNow && status.className.indexOf("err") < 0) status.textContent = alertNow.status;
+    if (shown) { drawChart($("d-chart"), shown, false); if (hoverAt !== null) hover(hoverAt); }
+  }
+
+  function targetValue() {
+    var n = Number(String($("a-target").value).replace(/[,$%\\s]/g, ""));
+    return isFinite(n) && n > 0 ? n : 0;
+  }
+
+  /* The target as a line on the chart, for the price conditions; past the edge, a tag at the edge. */
+  function drawTargetLine(box, c) {
+    var cond = $("a-cond").value;
+    if (cond !== "above" && cond !== "below") return;
+    var v = targetValue();
+    if (!v) return;
+    var f = 1 - (v - c.yMin) / ((c.yMax - c.yMin) || 1);
+    var label = el("span", "aline-label", (cond === "above" ? "Rises to " : "Falls to ") + fmtLevel(v));
+    if (f < 0 || f > 1) {
+      label.classList.add("edge");
+      label.textContent += f < 0 ? "  ↑" : "  ↓";
+      label.style.top = f < 0 ? "4px" : (box.clientHeight - 20) + "px";
+      box.append(label);
+      return;
+    }
+    var line = el("div", "yguide");
+    line.style.borderTop = "1.5px dashed #fab219";
+    line.style.top = (f * 100).toFixed(2) + "%";
+    label.style.top = (f * 100).toFixed(2) + "%";
+    box.append(line, label);
+  }
+
+  /* The price at a height on the chart, rounded to what the scale can tell apart. */
+  function levelAt(fy) {
+    var c = shown;
+    var v = c.yMax - fy * (c.yMax - c.yMin);
+    var step = c.yTicks.length > 1 ? Math.abs(c.yTicks[1].v - c.yTicks[0].v) / 20 : Math.abs(v) / 1000;
+    var p = Math.pow(10, Math.floor(Math.log10(step || 0.01)));
+    return Math.round(v / p) * p;
+  }
+
+  /* The level under the pointer, ready to click. */
+  function guide(fy) {
+    var box = $("d-chart");
+    var g = box.querySelector(".yguide.hover") || box.appendChild(el("div", "yguide hover"));
+    g.style.top = (fy * 100).toFixed(2) + "%";
+    g.replaceChildren(el("span", "", "Alert at " + fmtLevel(levelAt(fy))));
+  }
+
+  /* A picked level becomes the target: above the current price it is "rises to", below "falls to". */
+  function pickLevel(v) {
+    var now = shown.points[shown.points.length - 1].v;
+    $("a-cond").value = v >= now ? "above" : "below";
+    $("a-target").value = fmtLevel(v);
+    alertDirty = true;
+    syncAlertForm();
+    $("a-set").focus();
+  }
+
+  function setAlert() {
+    var cond = $("a-cond").value;
+    var needs = cond !== "high-52w" && cond !== "low-52w";
+    var t = targetValue();
+    var status = $("a-status");
+    if (needs && !t) {
+      status.textContent = "Enter a target first, or click the chart to pick one.";
+      status.className = "abox-status err";
+      $("a-target").focus();
+      return;
+    }
+    post("setAlert", { condition: cond, target: needs ? t : 0 }).then(function (reply) {
+      if (reply && reply.alert) { alertDirty = false; renderAlert(reply.alert); }
+      else if (reply && reply.message) { status.textContent = reply.message; status.className = "abox-status err"; }
+    });
+  }
+
+  if (INIT.alert) {
+    $("a-cond").addEventListener("change", function () { alertDirty = true; syncAlertForm(); });
+    $("a-target").addEventListener("input", function () { alertDirty = true; syncAlertForm(); });
+    $("a-target").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); setAlert(); } });
+    $("a-set").addEventListener("click", setAlert);
+    $("a-clear").addEventListener("click", function () {
+      post("clearAlert").then(function (reply) { if (reply && reply.alert) renderAlert(reply.alert); });
+    });
+  }
+
   /* ---- hover ---- */
 
   /* The bar nearest a position across the plot. Points are in x order, so a binary search. */
@@ -1018,15 +1193,23 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
 
   function unhover() {
     hoverAt = null;
+    hoverY = null;
     var box = $("d-chart");
-    [".xhair", ".dot", ".readout"].forEach(function (s) { var n = box.querySelector(s); if (n) n.remove(); });
+    [".xhair", ".dot", ".readout", ".yguide.hover"].forEach(function (s) { var n = box.querySelector(s); if (n) n.remove(); });
   }
 
   $("d-chart").addEventListener("pointermove", function (e) {
     if (!shown) return;
     var rect = this.getBoundingClientRect();
     hoverAt = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    hoverY = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
     hover(hoverAt);
+    if (INIT.alert) guide(hoverY);
+  });
+  /* In an alert's window a click on the chart picks the price level under the pointer as the target. */
+  $("d-chart").addEventListener("click", function () {
+    if (!INIT.alert || !shown || hoverY === null) return;
+    pickLevel(levelAt(hoverY));
   });
   $("d-chart").addEventListener("pointerleave", unhover);
 
@@ -1052,6 +1235,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     svg.append(svgEl("polyline", { points: line, fill: "none", stroke: colour, "stroke-width": 2, "stroke-linejoin": "round", "vector-effect": "non-scaling-stroke" }));
     if (animate) svg.classList.add("reveal");
     box.append(grid, svg);
+    if (INIT.alert) drawTargetLine(box, c);
   }
 
   /* ---- search ---- */
@@ -1136,6 +1320,11 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   $("d-web").addEventListener("click", function () { if (website) post("openLink", { url: website }); });
 
   document.addEventListener("keydown", function (e) {
+    /* Typing in the alert's form is typing: no single-key shortcuts while a field has the keys. */
+    var t = e.target;
+    var typing = t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA") && t.id !== "q";
+    if (typing && e.key !== "Escape") return;
+    if (e.key === "Escape" && typing) { t.blur(); e.preventDefault(); return; }
     if (e.key === "Escape") {
       e.preventDefault();
       if (onBoard && mode === "board" && openSym) closeRow();

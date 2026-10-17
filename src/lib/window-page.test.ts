@@ -15,6 +15,7 @@ describe("window page", () => {
     { mode: "detail" as const, symbol: "</script><script>bad()</script>", windowTitle: "</script>`${x}`" },
     { mode: "search" as const, windowTitle: "Stocks — add to watchlist", adding: true, canChange: false },
     { mode: "board" as const, symbol: "AAPL", windowTitle: "Stocks — watchlist", adding: true, canChange: false },
+    { mode: "detail" as const, symbol: "AAPL", windowTitle: "Stocks — AAPL", alert: true },
   ];
 
   it("emits script blocks that all parse, for every start", () => {
@@ -28,6 +29,10 @@ describe("window page", () => {
 
   it("escapes markup in embedded JSON", () => {
     expect(scriptJson("</script>")).toBe('"\\u003c/script>"');
+  });
+
+  it("keeps the alert form's regex intact through the template", () => {
+    expect(renderPage("t", inits[4])).toContain('replace(/[,$%\\s]/g, "")');
   });
 
   it("writes data into the DOM only through textContent", () => {

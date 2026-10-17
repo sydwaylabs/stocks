@@ -139,3 +139,38 @@ export function rearmLine(condition: Condition, target: number, r: Reading): str
 function trimPct(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
+
+/** The alert as the window shows and edits it. */
+export type AlertView = {
+  condition: Condition;
+  target: number;
+  phase: Phase;
+  needsTarget: boolean;
+  /** "Above 350.00" — what the key shows. */
+  caption: string;
+  /** One line under it, spelled out: "Watching — 1.9% away", "Fired at 351.20", "Rearms below 348.25". */
+  status: string;
+  /** For "Fired at … on …"; the page formats the time. */
+  firedAt: number | null;
+};
+
+export function alertView(
+  s: { condition: Condition; target: number; phase: Phase; firedAt: number | null; firedPrice: number | null },
+  r: Reading | null
+): AlertView {
+  const unset = needsTarget(s.condition) && s.target <= 0;
+  let status: string;
+  if (unset) status = "No target yet: enter one, or click the chart to pick a price.";
+  else if (s.phase === "fired") status = s.firedPrice !== null ? `Fired at ${formatPriceLong(s.firedPrice)}. Press the key, or Clear, to clear it.` : "Fired. Press the key, or Clear, to clear it.";
+  else if (s.phase === "cleared") status = `Cleared. ${r ? rearmLine(s.condition, s.target, r).replace(/^Rearm < /, "Watches again below ").replace(/^Rearm > /, "Watches again above ") : "Watches again once the price moves back."}`;
+  else status = `Watching${r ? ` — ${distance(s.condition, s.target, r) ?? "waiting for a price"}` : ""}.`;
+  return {
+    condition: s.condition,
+    target: s.target,
+    phase: s.phase,
+    needsTarget: needsTarget(s.condition),
+    caption: unset ? "Set a target" : describeCondition(s.condition, s.target),
+    status,
+    firedAt: s.phase === "fired" ? s.firedAt : null,
+  };
+}

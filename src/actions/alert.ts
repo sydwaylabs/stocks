@@ -9,7 +9,7 @@ import streamDeck, {
   type WillDisappearEvent,
 } from "@elgato/streamdeck";
 
-import { acknowledge, describeCondition, distance, needsTarget, rearmLine, step, type Reading } from "../lib/alert.js";
+import { acknowledge, alertView, CONDITIONS, describeCondition, distance, needsTarget, rearmLine, step, type Condition, type Reading } from "../lib/alert.js";
 import { renderKey, toDataUri, type KeyView } from "../lib/key-image.js";
 import { ProviderError } from "../lib/providers/types.js";
 import { normalise } from "../lib/quotes.js";
@@ -208,6 +208,18 @@ export class PriceAlert extends SingletonAction<AlertSettings> {
     }
   }
 
+  /** A new rule from the window: saved, watched afresh, checked at once. */
+  private async setRule(id: string, condition: Condition, target: number): Promise<void> {
+    const instance = this.instances.get(id);
+    if (!instance || !CONDITIONS.includes(condition)) return;
+    const clean = needsTarget(condition) && Number.isFinite(target) && target > 0 ? target : 0;
+    instance.settings = { ...instance.settings, condition, target: clean, phase: "armed", firedAt: null, firedPrice: null };
+    // setSettings() does not come back as onDidReceiveSettings, so watch and draw here.
+    await instance.action.setSettings(instance.settings);
+    this.syncPulse(id);
+    await this.check(id);
+  }
+
   private async setPhase(instance: Instance, phase: Required<AlertSettings>["phase"]): Promise<void> {
     const fired = phase === "fired";
     instance.settings = {
@@ -280,6 +292,22 @@ export class PriceAlert extends SingletonAction<AlertSettings> {
       quotes,
       symbol: () => instance.settings.symbol,
       startIn,
+      // The window edits the same rule as the inspector: set it, clear a fired one, read it back.
+      alert: {
+        get: () => alertView(instance.settings, instance.reading),
+        set: async (condition, target) => {
+          await this.setRule(id, condition, target);
+          return alertView(instance.settings, instance.reading);
+        },
+        clear: async () => {
+          if (instance.settings.phase === "fired") {
+            await this.setPhase(instance, acknowledge("fired"));
+            this.syncPulse(id);
+            await this.draw(instance);
+          }
+          return alertView(instance.settings, instance.reading);
+        },
+      },
       onSelect: async (result) => {
         startIn = undefined;
         instance.settings = {
