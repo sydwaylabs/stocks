@@ -12,8 +12,9 @@ notes and the Marketplace "what's new" text are generated from this file.
 
 ### Added
 
-- **Watchlist**: up to 12 symbols on one key. Press for the next, hold for details; optional
-  rotation every 5, 10 or 30 seconds. Add symbols by typing them or with search, which stays open
+- **Watchlist**: up to 12 symbols on one key. Press for the next; hold for a board of cards, one
+  per symbol with its price, move and the day's line, each opening its detail. Optional rotation
+  every 5, 10 or 30 seconds. Add symbols by typing them or with search, which stays open
   to add several.
 - **Price Alert**: turns its key amber, pulsing, when a symbol rises or falls to a price, moves a
   percentage today, or reaches a new 52-week high or low. Press to clear it; it watches again once

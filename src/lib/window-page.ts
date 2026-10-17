@@ -13,7 +13,7 @@
  */
 
 export type WindowInit = {
-  mode: "detail" | "search";
+  mode: "detail" | "search" | "board";
   symbol?: string;
   windowTitle: string;
   /** Search adds to a list and stays open for the next, instead of assigning one and closing. */
@@ -142,6 +142,32 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .notice { color: var(--fg-dim); padding: 30px 10px; text-align: center; }
 .added { color: var(--good); font-size: 12px; margin: 8px 2px 0; min-height: 16px; }
 
+/* board: a watchlist's cards, three across, after Timekeeper's world clock — a glance each, the
+   full view a click away. Name, then the price large as the thing the eye comes for, then the
+   day's move and its line. */
+.board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-content: start; }
+.bcard { position: relative; min-width: 0; height: 92px; box-sizing: border-box; padding: 10px 12px 9px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  background: var(--card); border: 1px solid var(--card-line); border-radius: 10px; cursor: pointer;
+  transition: border-color .1s ease; }
+.bcard:hover { border-color: #6a6a70; }
+.bhead { display: flex; align-items: baseline; gap: 6px; min-width: 0; padding-right: 18px; }
+.bsym { font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+.bname { font-size: 11.5px; color: var(--fg-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Which card the key is showing: a fact, in white, beside the name — not the up-green. */
+.onkey { flex: none; font-size: 9.5px; font-weight: 600; color: var(--fg); background: var(--kbd); border-radius: 4px; padding: 1px 5px; letter-spacing: .02em; }
+.bprice { font-size: 24px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bprice .unit { font-size: 11px; font-weight: 500; color: var(--fg-dim); margin-left: 3px; letter-spacing: 0; }
+.bmeta { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; }
+.bmeta svg { margin-left: auto; flex: none; display: block; }
+.berr { font-size: 13px; color: var(--slow); }
+/* Remove, in the corner while the card is under the pointer. */
+.bx { display: none; position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; padding: 0; border-radius: 6px;
+  align-items: center; justify-content: center; color: var(--fg-dim); background: var(--card); font-size: 14px; line-height: 1; }
+.bcard:hover .bx { display: inline-flex; }
+.bx:hover { color: var(--fg); border-color: #6a6a70; }
+.board-empty { grid-column: 1 / -1; color: var(--fg-dim); text-align: center; padding: 40px 10px; }
+
 /* search */
 .search-box { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; color: var(--fg); background: var(--card); border: 1px solid var(--card-line); border-radius: 8px; padding: 9px 11px; }
 .results { list-style: none; margin: 10px 0 0; padding: 0; }
@@ -164,8 +190,12 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
   <span class="bar-divider"></span>
   <span class="chip" id="chip"></span>
   <span class="spacer"></span>
+  <button id="back" hidden>‹ Watchlist</button>
+  <button id="add" hidden>Add symbol…</button>
   <button id="change" hidden>Change symbol…</button>
 </div>
+
+<main id="board" hidden><div class="board" id="cards"></div></main>
 
 <main id="detail" hidden>
   <div class="hero">
@@ -223,6 +253,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   document.title = INIT.windowTitle;
   var mode = INIT.mode;
   var openedForSearch = INIT.mode === "search";
+  /* A watchlist's window: it opens on the board, and the other views lead back to it. */
+  var onBoard = INIT.mode === "board";
   var symbol = INIT.symbol || "";
   var results = [];
   var selected = 0;
@@ -282,8 +314,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     clearTimeout(fitTimer);
     fitTimer = setTimeout(function () {
       var height = ${WINDOW_HEIGHT};
-      if (mode === "detail") {
-        var view = $("detail").hidden ? $("d-error") : $("detail");
+      if (mode === "detail" || mode === "board") {
+        var view = mode === "board" ? $("board") : $("detail").hidden ? $("d-error") : $("detail");
         view.style.flex = "none";
         height = $("bar").offsetHeight + view.scrollHeight + $("footer").offsetHeight;
         view.style.flex = "";
@@ -300,12 +332,20 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     mode = next;
     $("detail").hidden = true;
     $("d-error").hidden = true;
+    $("board").hidden = next !== "board";
     $("search").hidden = next !== "search";
     $("change").hidden = next !== "detail" || INIT.canChange === false;
+    /* A board's views lead back to it; its own view offers Add. */
+    $("back").hidden = !onBoard || next === "board";
+    $("add").hidden = !onBoard || next !== "board";
     clearInterval(poll);
-    if (next === "search") {
+    if (next === "board") {
+      setFooter([["click", "details"], ["a", "add"], ["esc", "close"]]);
+      loadBoard();
+      poll = setInterval(loadBoard, 60000);
+    } else if (next === "search") {
       $("chip").textContent = INIT.adding ? "Add to watchlist" : symbol ? "Change " + symbol : "Choose a symbol";
-      setFooter([["↑↓", "choose"], ["↵", INIT.adding ? "add" : "pick"], ["esc", openedForSearch ? (INIT.adding ? "done" : "close") : "back"]]);
+      setFooter([["↑↓", "choose"], ["↵", INIT.adding ? "add" : "pick"], ["esc", onBoard || !openedForSearch ? "back" : INIT.adding ? "done" : "close"]]);
       var q = $("q");
       q.value = query;
       q.focus();
@@ -314,10 +354,91 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       fit();
     } else {
       $("chip").textContent = symbol;
-      setFooter([["1–6", "range"], ["r", "refresh"], ["s", "change symbol"], ["esc", "close"]]);
+      setFooter(INIT.canChange === false
+        ? [["1–6", "range"], ["r", "refresh"], ["esc", onBoard ? "back" : "close"]]
+        : [["1–6", "range"], ["r", "refresh"], ["s", "change symbol"], ["esc", "close"]]);
       loadDetail();
       poll = setInterval(loadDetail, 30000);
     }
+  }
+
+  /* ---- board ---- */
+
+  function loadBoard() {
+    return post("board").then(function (reply) {
+      if (mode !== "board") return;
+      renderBoard((reply && reply.cards) || [], reply && reply.onKey, (reply && reply.max) || 12);
+    }).catch(function () {
+      if (mode === "board") $("cards").replaceChildren(el("p", "board-empty", "The plugin is not responding."));
+    });
+  }
+
+  function sparkSvg(c) {
+    var W = 64, H = 22;
+    var svg = svgEl("svg", { width: W, height: H, viewBox: "0 0 " + W + " " + H, "aria-hidden": "true" });
+    if (!c.points || c.points.length < 2) return svg;
+    var values = c.prevClose != null ? c.points.concat([c.prevClose]) : c.points;
+    var lo = Math.min.apply(null, values), hi = Math.max.apply(null, values), span = hi - lo || 1;
+    var y = function (v) { return 2 + (1 - (v - lo) / span) * (H - 4); };
+    var colour = c.trend === "down" ? "#ef4b4b" : c.trend === "up" ? "#29bd50" : "#8b8b93";
+    if (c.prevClose != null) svg.append(svgEl("line", { x1: 0, x2: W, y1: y(c.prevClose), y2: y(c.prevClose), stroke: "#4a4a4a", "stroke-dasharray": "2 3" }));
+    var pts = c.points.map(function (v, i) { return (i / (c.points.length - 1) * W).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
+    svg.append(svgEl("polyline", { points: pts, fill: "none", stroke: colour, "stroke-width": 1.5, "stroke-linejoin": "round" }));
+    return svg;
+  }
+
+  function renderBoard(cards, onKey, max) {
+    $("chip").textContent = "Watchlist · " + cards.length + " of " + max;
+    var grid = $("cards");
+    grid.replaceChildren();
+    if (!cards.length) {
+      grid.append(el("p", "board-empty", "No symbols yet. Add some to fill the board."));
+      fit();
+      return;
+    }
+    cards.forEach(function (c) {
+      var card = el("div", "bcard");
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-label", c.symbol + " details");
+
+      var head = el("div", "bhead");
+      head.append(el("span", "bsym", c.symbol));
+      if (c.name && c.name !== c.symbol) head.append(el("span", "bname", c.name));
+      if (c.symbol === onKey && cards.length > 1) head.append(el("span", "onkey", "ON KEY"));
+      card.append(head);
+
+      if (c.error) {
+        card.append(el("div", "berr", c.error), el("div", "bmeta"));
+      } else {
+        var price = el("div", "bprice", c.price);
+        if (c.currency) price.append(el("span", "unit", c.currency));
+        var meta = el("div", "bmeta");
+        meta.append(el("span", c.trend, [c.change, c.changePct ? "(" + c.changePct + ")" : ""].join(" ").trim()), sparkSvg(c));
+        card.append(price, meta);
+      }
+
+      var x = el("button", "bx", "×");
+      x.setAttribute("aria-label", "Remove " + c.symbol);
+      x.addEventListener("click", function (e) {
+        e.stopPropagation();
+        post("remove", { symbol: c.symbol }).then(loadBoard);
+      });
+      card.append(x);
+
+      card.addEventListener("click", function () { openCard(c.symbol); });
+      grid.append(card);
+    });
+    fit();
+  }
+
+  function openCard(sym) {
+    post("focus", { symbol: sym }).then(function (reply) {
+      if (!reply || !reply.ok) { loadBoard(); return; }
+      symbol = sym;
+      rangeCharts = {};
+      chart1d = null;
+      show("detail");
+    });
   }
 
   /* ---- detail ---- */
@@ -688,6 +809,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   });
 
   $("change").addEventListener("click", function () { show("search"); });
+  $("back").addEventListener("click", function () { show("board"); });
+  $("add").addEventListener("click", function () { show("search"); });
   Array.prototype.forEach.call($("ranges").children, function (b) {
     b.addEventListener("click", function () { selectRange(b.getAttribute("data-range")); });
   });
@@ -697,7 +820,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") {
       e.preventDefault();
-      if (mode === "search" && !openedForSearch) show("detail");
+      if (onBoard && mode !== "board") show("board");
+      else if (mode === "search" && !openedForSearch) show("detail");
       else post("close");
       return;
     }
@@ -715,10 +839,15 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       return;
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (mode === "board") {
+      if (e.key === "a") { e.preventDefault(); show("search"); }
+      if (e.key === "r") loadBoard();
+      return;
+    }
     if (e.key === "r") { rangeCharts = {}; loadDetail(); if (range !== "1d") selectRange(range); }
     var digit = ["1", "2", "3", "4", "5", "6"].indexOf(e.key);
     if (digit >= 0) selectRange(["1d", "5d", "1mo", "6mo", "ytd", "1y"][digit]);
-    if (e.key === "s") { e.preventDefault(); show("search"); }
+    if (e.key === "s" && INIT.canChange !== false) { e.preventDefault(); show("search"); }
   });
 
   /* The browser fallback ignores --window-size when Chrome is already running. */

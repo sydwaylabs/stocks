@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildDetail, formatEarnings, SearchSession, typeLabel } from "./detail-data.js";
+import { buildBoardCard, buildDetail, formatEarnings, SearchSession, thin, typeLabel } from "./detail-data.js";
 import type { Snapshot } from "./quotes.js";
 import { renderPage, scriptJson } from "./window-page.js";
 
@@ -14,6 +14,7 @@ describe("window page", () => {
     { mode: "detail" as const, symbol: "AAPL", windowTitle: "Stocks — AAPL" },
     { mode: "detail" as const, symbol: "</script><script>bad()</script>", windowTitle: "</script>`${x}`" },
     { mode: "search" as const, windowTitle: "Stocks — add to watchlist", adding: true, canChange: false },
+    { mode: "board" as const, symbol: "AAPL", windowTitle: "Stocks — watchlist", adding: true, canChange: false },
   ];
 
   it("emits two script blocks that parse, for every start", () => {
@@ -89,6 +90,24 @@ describe("detail data", () => {
   it("labels instrument types", () => {
     expect(typeLabel("MUTUALFUND")).toBe("Fund");
     expect(typeLabel("Common Stock")).toBe("Common stock");
+  });
+});
+
+describe("board cards", () => {
+  it("formats a card, thinning the sparkline but keeping the last price", () => {
+    const points = Array.from({ length: 79 }, (_, i) => 340 + i * 0.01);
+    const card = buildBoardCard({
+      quote: { symbol: "AAPL", name: "Apple Inc.", currency: "USD", price: 343.46, prevClose: 342, change: 1.46, changePct: 0.427, source: "yahoo" },
+      details: {}, series: { points, times: points.map((_, i) => i), utcOffset: 0 }, fetchedAt: 0,
+    });
+    expect(card).toMatchObject({ symbol: "AAPL", price: "343.46", change: "+1.46", changePct: "+0.43%", trend: "up" });
+    expect(card.points.length).toBeLessThanOrEqual(61);
+    expect(card.points.at(-1)).toBe(points.at(-1));
+  });
+
+  it("thins only long series", () => {
+    expect(thin([1, 2, 3], 60)).toEqual([1, 2, 3]);
+    expect(thin([0, 1, 2, 3, 4, 5, 6], 3)).toEqual([0, 3, 6]);
   });
 });
 

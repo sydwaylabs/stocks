@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { buildChart } from "./lib/chart-data.js";
-import { buildDetail, SearchSession, typeLabel } from "./lib/detail-data.js";
+import { buildBoardCard, buildDetail, SearchSession, typeLabel, type BoardCard } from "./lib/detail-data.js";
 import { LogoCache } from "./lib/logo-cache.js";
 import { CHART_RANGES, ProviderError, type ChartRange, type SearchResult } from "./lib/providers/types.js";
 import type { QuoteService } from "./lib/quotes.js";
@@ -37,6 +37,14 @@ export type StockWindowOptions = {
   adding?: boolean;
   /** Offer "Change symbol" in the detail view (default true). */
   canChange?: boolean;
+  /**
+   * A watchlist's board: the window opens on a card per symbol, and a card opens that symbol's
+   * detail. Without it, the window is about the one symbol the key shows.
+   */
+  board?: {
+    list: () => string[];
+    remove: (symbol: string) => Promise<void>;
+  };
   onOpen: (close: () => void) => void;
 };
 
@@ -48,15 +56,44 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
   // and only a symbol in here — the one on screen — is answered.
   const logoUrls = new Map<string, string>();
   const initialSymbol = options.symbol();
-  const mode = initialSymbol && options.startIn !== "search" ? "detail" : "search";
-  const windowTitle = options.adding
-    ? "Stocks — add to watchlist"
+  const board = options.board;
+  const mode = board && options.startIn !== "search" ? "board"
+    : initialSymbol && options.startIn !== "search" ? "detail" : "search";
+  const windowTitle = board ? "Stocks — watchlist"
+    : options.adding ? "Stocks — add to watchlist"
     : mode === "detail" ? `Stocks — ${initialSymbol.slice(0, 16)}` : "Stocks — choose a symbol";
+  // On a board, the detail view shows whichever card was opened, which only a symbol on the list
+  // can be. Elsewhere it is always the key's own symbol.
+  let viewing = initialSymbol;
+  const shown = (): string => (board ? (board.list().includes(viewing) ? viewing : "") : options.symbol());
 
   const onMessage = async (message: WindowMessage): Promise<unknown> => {
     switch (message.type) {
+      case "board": {
+        if (!board) return {};
+        const list = board.list();
+        const cards = await Promise.all(list.map(async (symbol): Promise<BoardCard> => {
+          try {
+            return buildBoardCard(await options.quotes.snapshot(symbol));
+          } catch (error) {
+            const notFound = error instanceof ProviderError && error.kind === "not-found";
+            return { symbol, name: symbol, trend: "flat", points: [], error: notFound ? "Not found" : "No data" };
+          }
+        }));
+        return { cards, onKey: options.symbol(), max: 12 };
+      }
+      case "focus": {
+        if (!board || typeof message.symbol !== "string" || !board.list().includes(message.symbol)) return { ok: false };
+        viewing = message.symbol;
+        return { ok: true };
+      }
+      case "remove": {
+        if (!board || typeof message.symbol !== "string" || !board.list().includes(message.symbol)) return { ok: false };
+        await board.remove(message.symbol);
+        return { ok: true };
+      }
       case "snapshot": {
-        const symbol = options.symbol();
+        const symbol = shown();
         if (!symbol) return { message: "No symbol is set on this key." };
         try {
           const detail = buildDetail(await options.quotes.detailed(symbol));
@@ -72,7 +109,7 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         }
       }
       case "chart": {
-        const symbol = options.symbol();
+        const symbol = shown();
         const range = message.range as ChartRange;
         if (!symbol || !CHART_RANGES.includes(range)) return { message: "No chart for that." };
         try {
@@ -124,7 +161,7 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         serveAsset: async (name, params) => {
           const symbol = params.get("symbol") ?? "";
           const url = logoUrls.get(symbol);
-          if (name !== "logo" || !url || symbol !== options.symbol().toUpperCase()) return null;
+          if (name !== "logo" || !url || symbol !== shown().toUpperCase()) return null;
           return logos.get(symbol, url);
         },
       });

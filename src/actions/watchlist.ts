@@ -22,7 +22,7 @@ import { ticker } from "../tick.js";
  *
  *   empty key, any press   → search window that adds to the list and stays open
  *   short press            → next symbol (and pauses auto-rotation for a minute)
- *   hold                   → detail window for the symbol showing
+ *   hold                   → the board: a card per symbol, each opening its detail
  *
  * The list is edited in the key's settings — typed, or added through search. Rotation, when it is
  * on, only runs while the key is on screen; a quote is fetched when its symbol comes round and
@@ -221,8 +221,19 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
       quotes,
       symbol: () => instance.list[instance.index] ?? "",
       startIn: mode === "add" ? "search" : undefined,
-      adding: mode === "add",
+      // Search from the board adds too, so the window adds in either case.
+      adding: true,
       canChange: false,
+      board: mode === "detail" ? {
+        list: () => instance.list,
+        remove: async (symbol) => {
+          const symbols = instance.list.filter((s) => s !== symbol).join(", ");
+          this.apply(instance, { ...instance.settings, symbols });
+          await instance.action.setSettings(instance.settings);
+          this.schedule(id);
+          await this.show(instance);
+        },
+      } : undefined,
       onSelect: async (result) => {
         const { symbols, added } = addSymbol(instance.settings.symbols, result.symbol);
         if (!added) {

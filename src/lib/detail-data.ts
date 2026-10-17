@@ -116,3 +116,45 @@ export class SearchSession {
     return typeof symbol === "string" ? this.shown.get(symbol) : undefined;
   }
 }
+
+/** One card on a watchlist's board: a glance, with the full view a click away. */
+export type BoardCard = {
+  symbol: string;
+  name: string;
+  price?: string;
+  currency?: string;
+  change?: string;
+  changePct?: string;
+  trend: Trend;
+  /** The day's closes, thinned to {@link CARD_POINTS} — a card's sparkline needs no more. */
+  points: number[];
+  prevClose?: number;
+  /** Set instead of a price when the quote could not be had. */
+  error?: string;
+};
+
+export const CARD_POINTS = 60;
+
+export function buildBoardCard(snap: Snapshot): BoardCard {
+  const { quote, series } = snap;
+  return {
+    symbol: quote.symbol,
+    name: quote.name ?? quote.symbol,
+    price: formatPriceLong(quote.price),
+    currency: quote.currency,
+    change: formatChange(quote.change),
+    changePct: formatPct(quote.changePct),
+    trend: trendOf(quote.change ?? quote.changePct),
+    points: thin(series?.points ?? [], CARD_POINTS),
+    prevClose: quote.prevClose,
+  };
+}
+
+/** Every k-th point, always ending on the last so the line finishes at the current price. */
+export function thin(points: number[], max: number): number[] {
+  if (points.length <= max) return points;
+  const k = Math.ceil(points.length / max);
+  const out = points.filter((_, i) => i % k === 0);
+  if (out[out.length - 1] !== points[points.length - 1]) out.push(points[points.length - 1]);
+  return out;
+}

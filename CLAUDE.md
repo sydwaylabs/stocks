@@ -25,7 +25,10 @@ Finnhub key handling through `src/services.ts`, and one inspector script (`ui/st
 
 - **Ticker** (`com.sydwaylabs.stocks.ticker`): one quote. Tap refreshes, hold opens the window.
 - **Watchlist** (`.watchlist`): up to 12 symbols, dots across the top. Tap moves on (pausing
-  rotation), hold opens the window without "Change symbol". Search adds and stays open.
+  rotation); hold opens the board (`mode: "board"`, cards after Timekeeper's world clock), where a
+  card opens its detail (the window's `focus` message, checked against the list) and × removes it.
+  Search adds and stays open. Note: an offscreen WKWebView does not advance CSS animations, so a
+  headless preview of a faded-in chart shows it blank — render with the window on screen.
 - **Price Alert** (`.alert`): logic in `src/lib/alert.ts` (armed → fired → cleared → armed, with
   a 0.5% re-arm margin). Tap clears a fired alert, otherwise checks now. Its watch ticker keeps
   running after `willDisappear` (only the pulse and window stop); the phase is saved in settings.
