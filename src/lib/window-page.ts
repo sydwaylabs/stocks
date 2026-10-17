@@ -144,7 +144,6 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .stat dt { color: var(--fg-dim); white-space: nowrap; }
 /* A label that explains itself on a click says so with a faint dotted underline. */
 .stat dt[data-explain] { text-decoration: underline dotted rgba(255,255,255,.32); text-underline-offset: 3px; cursor: pointer; }
-.stat dt[data-explain]:hover { color: var(--fg); }
 .stat dd { margin: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meta { color: var(--fg-faint); font-size: 11px; margin-top: 10px; }
 .note { color: var(--slow); font-size: 12px; margin-top: 8px; }
