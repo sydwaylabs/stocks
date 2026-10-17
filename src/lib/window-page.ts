@@ -142,8 +142,9 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .stats { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; margin-top: 12px; }
 .stat { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; line-height: 18px; min-width: 0; }
 .stat dt { color: var(--fg-dim); white-space: nowrap; }
-/* A label that explains itself on hover says so with a faint dotted underline. */
-.stat dt[data-hint] { text-decoration: underline dotted rgba(255,255,255,.28); text-underline-offset: 3px; cursor: help; }
+/* A label that explains itself on a click says so with a faint dotted underline. */
+.stat dt[data-explain] { text-decoration: underline dotted rgba(255,255,255,.32); text-underline-offset: 3px; cursor: pointer; }
+.stat dt[data-explain]:hover { color: var(--fg); }
 .stat dd { margin: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meta { color: var(--fg-faint); font-size: 11px; margin-top: 10px; }
 .note { color: var(--slow); font-size: 12px; margin-top: 8px; }
@@ -1029,7 +1030,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     d.rows.forEach(function (r) {
       var item = el("div", "stat");
       var label = el("dt", "", r.label);
-      if (r.hint) label.dataset.hint = r.hint;
+      if (r.hint) label.dataset.explain = r.hint;
       item.append(label, el("dd", "", r.value));
       rows.append(item);
     });

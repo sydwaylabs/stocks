@@ -31,6 +31,8 @@ export const TIP_SCRIPT = `
   tip.className = "page-tip";
   tip.setAttribute("role", "tooltip");
   var shownFor = null;
+  /* Shown by a click (data-explain) rather than a hover (data-hint): it stays until the next click. */
+  var clicked = false;
   /* A tip waits for the pointer to rest, so passing over things does not flash them up; once one is
      showing, its neighbours follow at once, as macOS tooltips do, until the pointer has been off
      anything with a hint for a moment. */
@@ -38,14 +40,15 @@ export const TIP_SCRIPT = `
   var pending = 0, lastHidden = 0;
   function hide() {
     clearTimeout(pending);
-    if (shownFor) lastHidden = Date.now();
+    if (shownFor && !clicked) lastHidden = Date.now();
     shownFor = null;
+    clicked = false;
     tip.classList.remove("on");
   }
-  function show(target) {
+  function show(target, text) {
     if (!tip.parentNode) document.body.appendChild(tip);
     shownFor = target;
-    tip.textContent = target.getAttribute("data-hint");
+    tip.textContent = text;
     var r = target.getBoundingClientRect();
     var w = tip.offsetWidth, h = tip.offsetHeight;
     var left = Math.max(6, Math.min(window.innerWidth - w - 6, r.left + r.width / 2 - w / 2));
@@ -55,15 +58,30 @@ export const TIP_SCRIPT = `
     tip.classList.add("on");
   }
   document.addEventListener("mouseover", function (event) {
+    /* An explanation someone clicked for stays put while the pointer wanders. */
+    if (clicked) return;
     var target = event.target && event.target.closest ? event.target.closest("[data-hint]") : null;
     if (target === shownFor) return;
     var warm = shownFor !== null || Date.now() - lastHidden < WARM_MS;
     hide();
     if (!target || !target.getAttribute("data-hint")) return;
-    if (warm) show(target);
-    else pending = setTimeout(function () { show(target); }, REST_MS);
+    if (warm) show(target, target.getAttribute("data-hint"));
+    else pending = setTimeout(function () { show(target, target.getAttribute("data-hint")); }, REST_MS);
   });
-  document.addEventListener("mousedown", hide);
+  /* Things that explain themselves on a click: the same element again, or anywhere else, closes it. */
+  document.addEventListener("click", function (event) {
+    var target = event.target && event.target.closest ? event.target.closest("[data-explain]") : null;
+    if (!target) return;
+    var again = clicked && shownFor === target;
+    hide();
+    if (again) return;
+    show(target, target.getAttribute("data-explain"));
+    clicked = true;
+  });
+  document.addEventListener("mousedown", function (event) {
+    var onExplain = event.target && event.target.closest && event.target.closest("[data-explain]");
+    if (!onExplain) hide();
+  });
   window.addEventListener("blur", hide);
 })();
 `;
