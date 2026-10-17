@@ -232,7 +232,8 @@ ${TIP_CSS}
   <span class="bar-divider"></span>
   <span class="chip" id="chip"></span>
   <span class="spacer"></span>
-  <button id="back" hidden>‹ Watchlist</button>
+  <!-- In the corner where + is on the board: one place, its job set by the view. -->
+  <button id="back" class="iconbtn" aria-label="Back to watchlist" data-hint="Back to watchlist" hidden></button>
   <!-- Neutral, not Timekeeper's green Add: on this screen green means a price went up. -->
   <button id="add" class="iconbtn" aria-label="Add symbol" data-hint="Add symbol" hidden></button>
   <button id="change" hidden>Change symbol…</button>
@@ -589,6 +590,14 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     acts.append(remove);
     panel.append(acts);
     r.row.append(panel);
+  }
+
+  /* Lucide chevron-left (ISC). */
+  function chevronLeftIcon() {
+    var svg = svgEl("svg", { viewBox: "0 0 24 24", width: 16, height: 16, fill: "none", stroke: "currentColor",
+      "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
+    svg.append(svgEl("path", { d: "m15 18-6-6 6-6" }));
+    return svg;
   }
 
   /* Lucide plus (ISC). */
@@ -1116,6 +1125,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   });
 
   $("change").addEventListener("click", function () { show("search"); });
+  $("back").append(chevronLeftIcon());
   $("back").addEventListener("click", function () { show("board"); });
   $("add").append(plusIcon());
   $("add").addEventListener("click", function () { show("search"); });
