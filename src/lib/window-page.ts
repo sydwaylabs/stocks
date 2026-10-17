@@ -207,8 +207,9 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .wacts .meta { margin: 0 auto 0 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .board-empty { color: var(--fg-dim); text-align: center; padding: 40px 10px; }
 
-/* A Price Alert's rule, beside its chart: amber, the alert's colour on the key, edge-marked. */
-.abox { margin-top: 12px; background: var(--card); border: 1px solid var(--card-line); border-left: 3px solid #fab219;
+/* A Price Alert's rule, beside its chart: a plain card like the rest, with amber only in its title
+   (and the whole card tinted when it has fired). */
+.abox { margin-top: 12px; background: var(--card); border: 1px solid var(--card-line);
   border-radius: 8px; padding: 9px 12px 10px; }
 .abox.fired { background: rgba(250,178,25,.10); border-color: #fab219; }
 .abox-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; min-width: 0; }
