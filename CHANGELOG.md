@@ -23,6 +23,7 @@ notes and the Marketplace "what's new" text are generated from this file.
   the price moves back past the line, and keeps watching while its folder is closed. Set it in
   the key's settings or in its window, where a click on the chart picks the price. When it fires,
   the window opens too, without taking the keyboard; turn **Open the window** off for key only.
+  Remove an alert from its window with the trash button.
 
 ### Fixed
 

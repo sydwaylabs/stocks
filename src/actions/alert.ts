@@ -255,7 +255,7 @@ export class PriceAlert extends SingletonAction<AlertSettings> {
     }
     if (needsTarget(condition) && target <= 0) {
       await this.paint(instance, {
-        kind: "alert", symbol, price: instance.reading?.price, caption: "Set a target", detail: "in the settings", state: "setup",
+        kind: "alert", symbol, price: instance.reading?.price, caption: "No alert", detail: "Hold to set", state: "setup",
       });
       return;
     }
@@ -297,6 +297,11 @@ export class PriceAlert extends SingletonAction<AlertSettings> {
         get: () => alertView(instance.settings, instance.reading),
         set: async (condition, target) => {
           await this.setRule(id, condition, target);
+          return alertView(instance.settings, instance.reading);
+        },
+        remove: async () => {
+          // Back to no rule: nothing to watch until a new one is set, here or in the settings.
+          await this.setRule(id, "above", 0);
           return alertView(instance.settings, instance.reading);
         },
         clear: async () => {

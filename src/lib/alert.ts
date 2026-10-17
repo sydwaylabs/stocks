@@ -152,6 +152,8 @@ export type AlertView = {
   status: string;
   /** For "Fired at … on …"; the page formats the time. */
   firedAt: number | null;
+  /** There is a rule to watch (and so one to remove). */
+  active: boolean;
 };
 
 export function alertView(
@@ -160,7 +162,7 @@ export function alertView(
 ): AlertView {
   const unset = needsTarget(s.condition) && s.target <= 0;
   let status: string;
-  if (unset) status = "No target yet: enter one, or click the chart to pick a price.";
+  if (unset) status = "No alert set. Choose a condition and target, or click the chart to pick a price.";
   else if (s.phase === "fired") status = s.firedPrice !== null ? `Fired at ${formatPriceLong(s.firedPrice)}. Press the key, or Clear, to clear it.` : "Fired. Press the key, or Clear, to clear it.";
   else if (s.phase === "cleared") status = `Cleared. ${r ? rearmLine(s.condition, s.target, r).replace(/^Rearm < /, "Watches again below ").replace(/^Rearm > /, "Watches again above ") : "Watches again once the price moves back."}`;
   else status = `Watching${r ? ` — ${distance(s.condition, s.target, r) ?? "waiting for a price"}` : ""}.`;
@@ -172,5 +174,6 @@ export function alertView(
     caption: unset ? "Set a target" : describeCondition(s.condition, s.target),
     status,
     firedAt: s.phase === "fired" ? s.firedAt : null,
+    active: !unset,
   };
 }

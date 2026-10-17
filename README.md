@@ -34,7 +34,8 @@ whatever you are typing in. It then
 waits for the price to move back past the line by 0.5% (or half a point, for a % move) before it
 watches again, so a price sitting on the line cannot fire it over and over. Holding the key opens
 its window, where the alert can be set too: choose the condition and a target, or click the chart
-at a price to pick it, and the target is drawn on the chart as an amber line. An alert keeps
+at a price to pick it, and the target is drawn on the chart as an amber line. The trash button
+there removes the alert; the key then shows "No alert" until a new one is set. An alert keeps
 watching while its folder is closed. After Stream Deck restarts, one in a closed folder starts
 again when that folder is next opened.
 

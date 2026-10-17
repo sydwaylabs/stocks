@@ -222,6 +222,7 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .abox input { width: 120px; font-variant-numeric: tabular-nums; }
 .abox .spacer { flex: 1; }
 .abox button { height: 30px; border-radius: 7px; padding: 0 12px; font-size: 12.5px; }
+.abox button.iconbtn { width: 30px; padding: 0; }
 .abox button.amber { background: #fab219; border-color: #fab219; color: #1f1600; font-weight: 650; }
 .abox button.amber:hover { background: #ffc23a; border-color: #ffc23a; }
 .abox button.amber:disabled { background: transparent; border-color: var(--card-line); color: var(--fg-faint); }
@@ -300,6 +301,7 @@ ${TIP_CSS}
       </select>
       <input id="a-target" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Target">
       <span class="spacer"></span>
+      <button id="a-remove" class="iconbtn remove" aria-label="Remove alert" data-hint="Remove alert" hidden></button>
       <button id="a-clear" hidden>Clear</button>
       <button id="a-set" class="amber">Set alert</button>
     </div>
@@ -1032,6 +1034,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     status.className = "abox-status";
     status.textContent = a.status;
     $("a-clear").hidden = a.phase !== "fired";
+    $("a-remove").hidden = !a.active;
     /* What someone is typing is theirs until they set it; a refresh only updates the status. */
     if (!alertDirty) {
       $("a-cond").value = a.condition;
@@ -1131,6 +1134,14 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     $("a-target").addEventListener("input", function () { alertDirty = true; syncAlertForm(); });
     $("a-target").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); setAlert(); } });
     $("a-set").addEventListener("click", setAlert);
+    $("a-remove").append(trashIcon());
+    $("a-remove").addEventListener("click", function () {
+      post("removeAlert").then(function (reply) {
+        if (!reply || !reply.alert) return;
+        alertDirty = false;
+        renderAlert(reply.alert);
+      });
+    });
     $("a-clear").addEventListener("click", function () {
       post("clearAlert").then(function (reply) { if (reply && reply.alert) renderAlert(reply.alert); });
     });
