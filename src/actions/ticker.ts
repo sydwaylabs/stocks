@@ -12,7 +12,7 @@ import streamDeck, {
 import { finnhubKey } from "../key-store.js";
 import { renderKey, toDataUri, type KeyView } from "../lib/key-image.js";
 import { ProviderError } from "../lib/providers/types.js";
-import { daysUntil, exchangeDate, normalise, unitOf, type Snapshot } from "../lib/quotes.js";
+import { daysUntil, exchangeDate, isStale, normalise, unitOf, type Snapshot } from "../lib/quotes.js";
 import { handleSharedMessage, LONG_PRESS_MS, onKeyChange, quotes } from "../services.js";
 import { EDITABLE, mergeWithDefaults, type TickerSettings } from "../lib/settings.js";
 import { openStockWindow } from "../stock-window.js";
@@ -229,7 +229,7 @@ export class Ticker extends SingletonAction<TickerSettings> {
       changeAs: settings.changeAs,
       earningsSoon: instance.earningsSoon,
       // Twice the interval: one missed refresh is a blip, two means the numbers are old.
-      stale: Date.now() - last.fetchedAt > 2 * intervalMs(settings),
+      stale: isStale(last, 2 * intervalMs(settings)),
     });
   }
 

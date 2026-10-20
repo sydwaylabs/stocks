@@ -1,4 +1,5 @@
 import { TIP_CSS, TIP_SCRIPT } from "./page-tip.js";
+import { WATCHLIST_MAX } from "./settings.js";
 
 /**
  * The Stocks window: one page with two views.
@@ -32,6 +33,17 @@ export type WindowInit = {
 
 export const WINDOW_WIDTH = 640;
 export const WINDOW_HEIGHT = 630;
+/**
+ * A board's details open beside the list: the list gives up some of its width to the panel, and
+ * the window widens, about its centre, for the rest.
+ */
+export const BOARD_LIST_WIDTH = 560;
+export const PANEL_WIDTH = 550;
+export const BOARD_WIDE_WIDTH = BOARD_LIST_WIDTH + PANEL_WIDTH;
+/** A board's list and panel: a stock's full panel (507 measured), so most never grow it. */
+export const BOARD_VIEW_HEIGHT = 510;
+/** The board's window as launched: that, plus the bar (49) and footer (30) as drawn. */
+export const BOARD_WINDOW_HEIGHT = BOARD_VIEW_HEIGHT + 79;
 
 /** JSON that is safe inside a script block: `</script>` in data cannot end it. */
 export function scriptJson(value: unknown): string {
@@ -154,7 +166,8 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 
 /* board: a watchlist as rows, one opening in place to the full chart and stats — so the other
    symbols stay in view and comparing is moving down the list, not going in and out of a page. */
-.wl { display: flex; flex-direction: column; gap: 7px; }
+/* Ten rows, and the Add slot under nine, fit the board's height, so the list never scrolls. */
+.wl { display: flex; flex-direction: column; gap: 5px; }
 .wrow { position: relative; background: var(--card); border: 1px solid var(--card-line); border-radius: 10px;
   transition: border-color .1s ease, transform 140ms ease; }
 /* Dragging, after Timekeeper's cards: the row lifts and follows the pointer, the others slide aside. */
@@ -162,10 +175,11 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .wrow.lifted.settling { transition: transform 150ms cubic-bezier(.2, .7, .3, 1); }
 body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-select: none; }
 .wrow:hover, .wrow.cursor { border-color: #6a6a70; }
-.wrow.open { border-color: #6a6a70; }
-.whead { display: grid; grid-template-columns: 32px minmax(0, 1fr) 76px 104px 88px; align-items: center; column-gap: 14px;
-  height: 50px; padding: 0 14px; cursor: pointer; }
-.wmark { position: relative; width: 32px; height: 32px; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center;
+/* The symbol in the panel, marked in the list beside it. */
+.wrow.sel { border-color: #8a8a90; background: #303033; }
+.whead { display: grid; grid-template-columns: 28px minmax(0, 1fr) 56px 104px 88px; align-items: center; column-gap: 14px;
+  height: 42px; padding: 0 14px; cursor: pointer; }
+.wmark { position: relative; width: 28px; height: 28px; border-radius: 7px; overflow: hidden; display: flex; align-items: center; justify-content: center;
   background: linear-gradient(160deg, #4a4a50, #2c2c30); font-size: 14px; font-weight: 700; color: var(--fg);
   box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset; }
 /* The logo over the initial, so a slow or failed image still leaves a mark — as the large tile does. */
@@ -192,8 +206,35 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .wmove:hover { border-color: rgba(255,255,255,.18); }
 
 .werr { grid-column: 3 / -1; justify-self: end; color: var(--slow); font-size: 12.5px; }
-.wpanel { padding: 2px 14px 14px; border-top: 1px solid var(--line); }
-.wpanel .chart-head { margin-top: 10px; }
+/* Where the next symbol goes: the one empty slot under a list with room. */
+.wslot { display: flex; align-items: center; gap: 14px; height: 44px; padding: 0 14px; box-sizing: border-box;
+  border: 1px dashed #47474c; border-radius: 10px; color: var(--fg-faint); font-size: 12.5px; cursor: pointer; }
+.wslot:hover { border-color: #6a6a70; color: var(--fg-dim); }
+.wslot b { width: 28px; height: 28px; box-sizing: border-box; border-radius: 7px; border: 1px dashed #55555a;
+  display: grid; place-items: center; font-size: 17px; font-weight: 400; }
+
+/* A board: the list and, beside it, the detail view as a panel. The window widens for the panel
+   and keeps one height whatever the list's length, so neither opening it nor adding a symbol
+   moves anything; a short list leaves room under it. */
+.split { flex: 1; min-height: 0; display: flex; }
+.split > main { min-width: 0; }
+#board { padding-top: 10px; padding-bottom: 10px; }
+.split.side #board { flex: 0 0 ${BOARD_LIST_WIDTH}px; box-sizing: border-box; }
+/* No slide-in of its own: the window's widening is the motion, and a CSS animation in a window
+   not yet on screen does not advance — the panel would open stuck at its first frame, invisible. */
+.split.side #detail { flex: 0 0 ${PANEL_WIDTH}px; box-sizing: border-box; background: #2d2d2d;
+  border-left: 1px solid #4a4a50; }
+.side .hero { gap: 12px; }
+/* The mark spans the hero's three lines, from the symbol's cap to the move's last line. */
+.side .mark { width: 56px; height: 56px; border-radius: 13px; box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset; }
+.side .mono { font-size: 24px; }
+/* The symbol never gives way; a long company line beside it is what gets cut short. */
+.side .name { color: var(--fg); font-weight: 650; font-size: 14px; flex: none; overflow: visible; }
+.side .price-row { gap: 8px; }
+.side .price { font-size: 22px; }
+.side .move { font-size: 13px; }
+.side .chart-head { margin-top: 14px; }
+#d-close { align-self: flex-start; }
 .wacts { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 10px; }
 .wacts button { font-size: 12px; padding: 0 10px; height: 28px; box-sizing: border-box; border-radius: 7px; }
 .wacts .iconbtn { padding: 0; }
@@ -206,17 +247,17 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .iconbtn.remove { color: #fff; background: var(--fail); border-color: var(--fail); }
 .iconbtn.remove:hover { color: #fff; background: #dc4a4a; border-color: #dc4a4a; }
 
-/* In a row, the stats sit four across and label-over-value, so a full set is three short lines. */
-.wpanel .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 16px; margin-top: 10px; }
-.wpanel .stat { flex-direction: column; justify-content: flex-start; gap: 1px; padding: 6px 0; }
-.wpanel .stat dt { font-size: 11px; }
-.wpanel .stat dd { text-align: left; font-size: 12.5px; }
+/* In the panel, the stats sit four across and label-over-value, so a full set is three short lines. */
+.side .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 16px; margin-top: 10px; }
+.side .stat { flex-direction: column; justify-content: flex-start; gap: 1px; padding: 6px 0; }
+.side .stat dt { font-size: 11px; }
+.side .stat dd { text-align: left; font-size: 12.5px; }
 /* A short set — an index, a coin, a stock without Finnhub's extras — has room to spare: two across,
    label and value on one line, as the Ticker's window shows them. */
-.wpanel .stats.roomy { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
-.wpanel .stats.roomy .stat { flex-direction: row; justify-content: space-between; gap: 10px; }
-.wpanel .stats.roomy .stat dt { font-size: inherit; }
-.wpanel .stats.roomy .stat dd { text-align: right; font-size: inherit; }
+.side .stats.roomy { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
+.side .stats.roomy .stat { flex-direction: row; justify-content: space-between; gap: 10px; }
+.side .stats.roomy .stat dt { font-size: inherit; }
+.side .stats.roomy .stat dd { text-align: right; font-size: inherit; }
 /* The source line shares the row's last line with its buttons: on the left, quiet, and clipped
    rather than wrapped if a long one meets them. */
 .wacts .meta { margin: 0 auto 0 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -330,6 +371,7 @@ ${TIP_CSS}
   <button id="change" class="iconbtn" aria-label="Change symbol" data-hint="Change symbol" hidden></button>
 </div>
 
+<div class="split" id="split">
 <main id="board" hidden><div class="wl" id="cards"></div></main>
 <div class="popover menu" id="sort-sheet" role="menu" aria-label="Sort" hidden></div>
 <div class="popover" id="add-sheet" role="dialog" aria-label="Add symbol" hidden>
@@ -352,6 +394,7 @@ ${TIP_CSS}
       <div class="price-row"><span class="price" id="d-price"></span><span class="ccy" id="d-ccy"></span></div>
       <div class="move" id="d-move"></div>
     </div>
+    <button id="d-close" class="iconbtn" aria-label="Close details" data-hint="Close details" hidden></button>
   </div>
   <!-- The chart, stats and source line. On a watchlist board this whole block moves into the
        open row; elsewhere it stays here under the price. -->
@@ -394,6 +437,7 @@ ${TIP_CSS}
   <p class="meta" id="d-meta"></p>
   </div>
 </main>
+</div>
 <main id="d-error" class="notice" hidden></main>
 
 <main id="search" hidden>
@@ -483,8 +527,12 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     clearTimeout(fitTimer);
     fitTimer = setTimeout(function () {
       var height = ${WINDOW_HEIGHT};
-      if (mode === "detail" || mode === "board") {
-        var view = mode === "board" ? $("board") : $("detail").hidden ? $("d-error") : $("detail");
+      var width = 0;
+      if (mode === "board") {
+        height = $("bar").offsetHeight + boardHeight() + $("footer").offsetHeight;
+        width = openSym ? ${BOARD_WIDE_WIDTH} : ${WINDOW_WIDTH};
+      } else if (mode === "detail") {
+        var view = $("detail").hidden ? $("d-error") : $("detail");
         view.style.flex = "none";
         height = $("bar").offsetHeight + view.scrollHeight + $("footer").offsetHeight;
         view.style.flex = "";
@@ -494,12 +542,30 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
         var pop = $(id);
         if (!pop.hidden) height = Math.max(height, pop.offsetTop + pop.offsetHeight + 12);
       });
+      var size = width ? { height: height, width: width } : { height: height };
       if (window.__nativeHost) {
-        try { window.webkit.messageHandlers.resize.postMessage({ height: height }); } catch (e) { /* older host */ }
+        try { window.webkit.messageHandlers.resize.postMessage(size); } catch (e) { /* older host */ }
       } else {
-        try { window.resizeTo(outerWidth, height + (outerHeight - innerHeight)); } catch (e) { /* not allowed */ }
+        try { window.resizeTo(width ? width + (outerWidth - innerWidth) : outerWidth, height + (outerHeight - innerHeight)); } catch (e) { /* not allowed */ }
       }
     }, 0);
+  }
+
+  /*
+   * A board keeps one height: at least BOARD_MIN — a stock's full panel — and whatever taller
+   * panel it has had to show since it opened. It never shrinks back, so stepping from a stock to an
+   * index, with fewer figures, does not move the window; a longer list scrolls.
+   */
+  var BOARD_MIN = ${BOARD_VIEW_HEIGHT};
+  var boardTall = BOARD_MIN;
+  function boardHeight() {
+    var d = $("detail");
+    if (openSym && !d.hidden) {
+      d.style.alignSelf = "flex-start";
+      boardTall = Math.max(boardTall, d.offsetHeight);
+      d.style.alignSelf = "";
+    }
+    return boardTall;
   }
 
   function show(next) {
@@ -507,6 +573,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     $("detail").hidden = true;
     $("d-error").hidden = true;
     $("board").hidden = next !== "board";
+    $("split").classList.remove("side");
     $("search").hidden = next !== "search";
     $("change").hidden = next !== "detail" || INIT.canChange === false;
     /* A board's views lead back to it; its own view offers Add. */
@@ -518,6 +585,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     clearInterval(poll);
     if (next === "board") {
       setFooter(boardFooter());
+      if (openSym) showPanel();
       loadBoard();
       poll = setInterval(function () { loadBoard(); if (openSym) loadDetail(); }, 30000);
     } else if (next === "search") {
@@ -541,7 +609,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
 
   /* ---- refresh and pin ---- */
 
-  /* Past every cache, for someone who wants the latest price now; the icon turns while it works. */
+  /* What is being looked at, past the caches, for someone who wants the latest price now; the icon
+     turns while it works. */
   var refreshing = false;
   function refreshNow() {
     if (refreshing || mode === "search") return;
@@ -551,7 +620,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     rangeCharts = {};
     var jobs = [];
     if (mode === "board") {
-      jobs.push(loadBoard(true));
+      /* The list as it is (it is never more than a poll old); only the panel's symbol is forced. */
+      jobs.push(loadBoard());
       if (openSym) jobs.push(loadDetail(true));
     } else {
       jobs.push(loadDetail(true));
@@ -670,10 +740,10 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   /* ---- board ---- */
 
   /*
-   * A watchlist's rows. One at a time opens in place: the detail view's chart, stats and source
-   * line (#d-body) move into it, so the chart, its ranges and hover work exactly as they do on a
-   * Ticker's window. Rows are kept by symbol and updated in place, so the minute's refresh does not
-   * rebuild the open one under the pointer.
+   * A watchlist's rows, and beside them the detail view as a panel for one of them — the same view
+   * a Ticker's window shows, so the chart, its ranges and hover work exactly as they do there. Rows
+   * are kept by symbol and updated in place, so the minute's refresh does not rebuild the list
+   * under the pointer.
    */
   var boardCards = [];
   var boardOnKey = "";
@@ -684,21 +754,26 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   var rowEls = {};
   var boardOrder = "";
   var firstBoard = true;
+  var boardMax = ${WATCHLIST_MAX};
 
-  function loadBoard(force) {
-    return post("board", { force: force === true }).then(function (reply) {
+  function loadBoard() {
+    return post("board").then(function (reply) {
       if (mode !== "board") return;
       boardCards = (reply && reply.cards) || [];
       boardOnKey = (reply && reply.onKey) || "";
       if (reply && reply.changeAs) changeAs = reply.changeAs;
       if (reply && reply.sort) { boardSort = reply.sort; paintSort(); }
-      $("chip").textContent = "Watchlist · " + boardCards.length + " of " + ((reply && reply.max) || 12);
-      /* Every row starts closed; the keyboard's place starts on the row the key is showing, so
-         Return opens what you were just looking at. */
+      boardMax = (reply && reply.max) || ${WATCHLIST_MAX};
+      $("chip").textContent = "Watchlist · " + boardCards.length + " of " + boardMax;
+      /* The panel opens on the symbol the key is showing — what you were just looking at — unless
+         the board opened to add. */
       if (firstBoard) {
         firstBoard = false;
         cursor = Math.max(0, boardCards.findIndex(function (c) { return c.symbol === boardOnKey; }));
+        renderBoard();
         if (INIT.openAdd) setTimeout(function () { toggleAdd(true, "add"); }, 0);
+        else if (boardCards[cursor]) panelTo(boardCards[cursor].symbol);
+        return;
       }
       renderBoard();
     }).catch(function () {
@@ -707,7 +782,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   }
 
   function sparkSvg(c) {
-    var W = 76, H = 26;
+    var W = 56, H = 26;
     var svg = svgEl("svg", { class: "wspark", width: W, height: H, viewBox: "0 0 " + W + " " + H, "aria-hidden": "true" });
     if (!c.points || c.points.length < 2) return svg;
     var values = c.prevClose != null ? c.points.concat([c.prevClose]) : c.points;
@@ -764,12 +839,12 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (!boardCards.length) {
       rowEls = {};
       boardOrder = "";
-      parkBody();
+      closePanel();
       list.replaceChildren(el("p", "board-empty", "No symbols yet. Add some to fill the board."));
       fit();
       return;
     }
-    /* Same symbols in the same order: refresh each row's line in place, leaving the open one open. */
+    /* Same symbols in the same order: refresh each row's line in place. */
     if (order === boardOrder) {
       boardCards.forEach(function (c) { fillHead(rowEls[c.symbol].head, c); });
       markCursor();
@@ -777,13 +852,11 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     }
     boardOrder = order;
     rowEls = {};
-    parkBody();
     list.replaceChildren();
-    boardCards.forEach(function (c, i) {
+    boardCards.forEach(function (c) {
       var row = el("div", "wrow");
       var head = el("div", "whead");
       head.setAttribute("role", "button");
-      head.setAttribute("aria-expanded", "false");
       /* By symbol, not by the card object: a refresh replaces the objects but keeps the row. */
       var at = function () { return boardCards.findIndex(function (x) { return x.symbol === c.symbol; }); };
       head.addEventListener("pointerdown", function (e) { var i = at(); if (i >= 0) beginDrag(e, i); });
@@ -792,15 +865,25 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
         var i = at();
         if (i < 0) return;
         cursor = i;
-        toggleRow(c.symbol);
+        panelTo(c.symbol);
       });
       fillHead(head, c);
       row.append(head);
       list.append(row);
       rowEls[c.symbol] = { row: row, head: head };
     });
-    if (openSym && rowEls[openSym]) attachBody(openSym);
-    else openSym = "";
+    if (boardCards.length < boardMax) {
+      var slot = el("div", "wslot");
+      slot.setAttribute("role", "button");
+      slot.append(el("b", "", "+"), "Add symbol");
+      slot.addEventListener("click", function (e) { e.stopPropagation(); toggleAdd(true, "add"); });
+      list.append(slot);
+    }
+    /* The symbol in the panel went (removed elsewhere): show the one now in its place. */
+    if (openSym && !rowEls[openSym]) {
+      var next = boardCards[Math.min(cursor, boardCards.length - 1)];
+      panelTo(next.symbol);
+    }
     if (cursor >= boardCards.length) cursor = boardCards.length - 1;
     markCursor();
     fit();
@@ -809,50 +892,48 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   function markCursor() {
     boardCards.forEach(function (c, i) {
       var r = rowEls[c.symbol];
-      if (r) r.row.classList.toggle("cursor", i === cursor);
+      if (!r) return;
+      r.row.classList.toggle("cursor", i === cursor);
+      r.row.classList.toggle("sel", c.symbol === openSym);
+      r.head.setAttribute("aria-current", String(c.symbol === openSym));
     });
   }
 
-  /* Puts the chart block back in the hidden detail view, out of any row. */
-  function parkBody() {
-    var body = $("d-body");
-    /* The source line is borrowed by an open row's button line; it goes home with the rest. */
-    var meta = $("d-meta") || body.querySelector("#d-meta");
-    if (meta.parentNode !== body) body.append(meta);
-    if (body.parentNode !== $("detail")) $("detail").append(body);
+  /* The panel's last line: the source, quiet, then what can be done with this symbol. */
+  function panelActions() {
     var acts = $("wacts");
-    if (acts) acts.remove();
+    if (!acts) {
+      acts = el("div", "wacts");
+      acts.id = "wacts";
+      acts.append($("d-meta"));
+      var onKey = el("button", "", "Show on key");
+      onKey.id = "w-onkey";
+      onKey.addEventListener("click", function () {
+        var sym = openSym;
+        post("showOnKey", { symbol: sym }).then(function () { boardOnKey = sym; renderBoardHeads(); onKey.hidden = true; });
+      });
+      var remove = el("button", "iconbtn remove");
+      remove.id = "w-remove";
+      remove.dataset.hint = "Remove from watchlist";
+      remove.append(trashIcon());
+      remove.addEventListener("click", removeShown);
+      acts.append(onKey, remove);
+      $("detail").append(acts);
+    }
+    $("w-onkey").hidden = openSym === boardOnKey;
+    $("w-remove").setAttribute("aria-label", "Remove " + openSym);
   }
 
-  function attachBody(sym) {
-    var r = rowEls[sym];
-    if (!r) return;
-    r.row.classList.add("open");
-    r.head.setAttribute("aria-expanded", "true");
-    /* Found before anything moves: once #d-body leaves the document, getElementById cannot see in. */
-    var body = $("d-body"), meta = $("d-meta");
-    var panel = el("div", "wpanel");
-    panel.append(body);
-    var acts = el("div", "wacts");
-    acts.id = "wacts";
-    acts.append(meta);
-    if (sym !== boardOnKey) {
-      var onKey = el("button", "", "Show on key");
-      onKey.addEventListener("click", function () {
-        post("showOnKey", { symbol: sym }).then(function () { boardOnKey = sym; renderBoardHeads(); acts.removeChild(onKey); });
-      });
-      acts.append(onKey);
-    }
-    var remove = el("button", "iconbtn remove");
-    remove.setAttribute("aria-label", "Remove " + sym);
-    remove.dataset.hint = "Remove from watchlist";
-    remove.append(trashIcon());
-    remove.addEventListener("click", function () {
-      post("remove", { symbol: sym }).then(function () { closeRow(); loadBoard(); });
+  /* Removing the symbol on show moves the panel to the one that takes its place, so a tidy-up is
+     a run of clicks on one button. */
+  function removeShown() {
+    var sym = openSym;
+    var at = boardCards.findIndex(function (c) { return c.symbol === sym; });
+    post("remove", { symbol: sym }).then(function () {
+      var rest = boardCards.filter(function (c) { return c.symbol !== sym; });
+      if (rest.length) { cursor = Math.min(at, rest.length - 1); panelTo(rest[cursor].symbol); }
+      loadBoard();
     });
-    acts.append(remove);
-    panel.append(acts);
-    r.row.append(panel);
   }
 
   /* Lucide chevron-left (ISC). */
@@ -868,6 +949,14 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     var svg = svgEl("svg", { viewBox: "0 0 24 24", width: 15, height: 15, fill: "none", stroke: "currentColor",
       "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
     svg.append(svgEl("path", { d: "M8 3 4 7l4 4" }), svgEl("path", { d: "M4 7h16" }), svgEl("path", { d: "m16 21 4-4-4-4" }), svgEl("path", { d: "M20 17H4" }));
+    return svg;
+  }
+
+  /* Lucide x (ISC). */
+  function closeIcon() {
+    var svg = svgEl("svg", { viewBox: "0 0 24 24", width: 15, height: 15, fill: "none", stroke: "currentColor",
+      "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
+    svg.append(svgEl("path", { d: "M18 6 6 18M6 6l12 12" }));
     return svg;
   }
 
@@ -900,47 +989,64 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     boardCards.forEach(function (c) { if (rowEls[c.symbol]) fillHead(rowEls[c.symbol].head, c); });
   }
 
-  function closeRow() {
-    if (!openSym) return;
-    var r = rowEls[openSym];
-    parkBody();
-    if (r) {
-      r.row.classList.remove("open");
-      r.head.setAttribute("aria-expanded", "false");
-      var panel = r.row.querySelector(".wpanel");
-      if (panel) panel.remove();
-    }
-    openSym = "";
-    fit();
+  /* Shows the panel for whatever is in it: the list narrows to its own width beside it. */
+  function showPanel() {
+    $("split").classList.add("side");
+    $("detail").classList.add("side");
+    $("detail").hidden = false;
+    $("d-close").hidden = false;
   }
 
-  function openRow(sym) {
+  /*
+   * Puts a symbol in the panel, opening it if it was closed. Stepping quickly through the list
+   * sends a focus per step; only the last one's figures are drawn (loadDetail checks the symbol).
+   */
+  function panelTo(sym) {
     var card = boardCards.find(function (c) { return c.symbol === sym; });
-    if (!card || card.error) return;
-    closeRow();
+    if (!card) return;
+    var wasOpen = !!openSym;
+    if (sym === openSym && wasOpen) return;
+    openSym = sym;
+    symbol = sym;
+    rangeCharts = {};
+    chart1d = null;
+    drawnKey = "";
+    /* Clear the last symbol's figures so they never show under this one's name. */
+    $("d-name").textContent = sym;
+    $("d-company").textContent = "";
+    $("d-price").textContent = "";
+    $("d-ccy").textContent = "";
+    $("d-move").replaceChildren();
+    $("d-mono").textContent = initialOf(card.name, sym);
+    $("d-logo").hidden = true;
+    $("d-web").hidden = true;
+    $("d-rows").replaceChildren();
+    $("d-meta").textContent = "";
+    chartNotice(card.error ? card.error : "Loading…");
+    showPanel();
+    panelActions();
+    markCursor();
+    fit();
     post("focus", { symbol: sym }).then(function (reply) {
-      if (!reply || !reply.ok || mode !== "board") return;
-      openSym = sym;
-      symbol = sym;
-      rangeCharts = {};
-      chart1d = null;
-      drawnKey = "";
-      /* Clear the last symbol's numbers so they never show under this one's name. */
-      $("d-chart").replaceChildren();
-      $("d-rows").replaceChildren();
-      $("d-meta").textContent = "";
-      attachBody(sym);
-      /* Today's chart arrives with the quote; a longer range is asked for now. */
-      if (range === "1d") chartNotice("Loading…");
-      else selectRange(range);
+      if (!reply || !reply.ok || openSym !== sym || mode !== "board") return;
+      if (range !== "1d") selectRange(range);
       loadDetail();
-      fit();
     });
   }
 
-  function toggleRow(sym) {
-    if (openSym === sym) closeRow();
-    else openRow(sym);
+  /*
+   * Closes the panel for this visit; the window narrows back to the list. Not remembered: the board
+   * always opens on the key's symbol, and remembering a close (Esc closes the panel before the
+   * window) left keys opening without it.
+   */
+  function closePanel() {
+    if (!openSym) return;
+    openSym = "";
+    $("split").classList.remove("side");
+    $("detail").classList.remove("side");
+    $("detail").hidden = true;
+    markCursor();
+    fit();
   }
 
   /* ---- adding, in a popover over the board ---- */
@@ -1077,7 +1183,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   function beginDrag(e, i) {
     /* Only your own order can be rearranged; a sorted view is the sort's to arrange. */
     if (e.button !== 0 || boardCards.length < 2 || boardSort !== "custom") return;
-    drag = { from: i, target: i, startY: e.clientY, active: false, row: rowEls[boardCards[i].symbol].row };
+    drag = { from: i, target: i, startY: e.clientY, lastY: e.clientY, active: false, row: rowEls[boardCards[i].symbol].row };
   }
 
   /* Where row i sits if the dragged row lands on target: everything between shifts one slot. */
@@ -1087,18 +1193,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     return i;
   }
 
-  document.addEventListener("pointermove", function (e) {
-    if (!drag) return;
-    var dy = e.clientY - drag.startY;
-    if (!drag.active) {
-      if (Math.abs(dy) < DRAG_THRESHOLD) return;
-      drag.active = true;
-      /* Every row the same height while they move: an open one closes first. */
-      if (openSym) closeRow();
-      drag.slots = rowList().map(function (r) { var b = r.getBoundingClientRect(); return b.top + b.height / 2; });
-      drag.row.classList.add("lifted");
-      document.body.classList.add("dragging-row");
-    }
+  function dragUpdate() {
+    var dy = drag.lastY - drag.startY;
     var y = drag.slots[drag.from] + dy, best = drag.from, bestDistance = Infinity;
     drag.slots.forEach(function (slot, i) {
       var d = Math.abs(slot - y);
@@ -1110,6 +1206,19 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       var shift = drag.slots[slotFor(i, best)] - drag.slots[i];
       r.style.transform = shift ? "translateY(" + shift + "px)" : "";
     });
+  }
+
+  document.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    drag.lastY = e.clientY;
+    if (!drag.active) {
+      if (Math.abs(e.clientY - drag.startY) < DRAG_THRESHOLD) return;
+      drag.active = true;
+      drag.slots = rowList().map(function (r) { var b = r.getBoundingClientRect(); return b.top + b.height / 2; });
+      drag.row.classList.add("lifted");
+      document.body.classList.add("dragging-row");
+    }
+    dragUpdate();
   });
 
   document.addEventListener("pointerup", function () {
@@ -1147,8 +1256,11 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   /* ---- detail ---- */
 
   function loadDetail(force) {
+    var forSym = openSym;
     return post("snapshot", { force: force === true }).then(function (reply) {
       if (mode !== "detail" && !(mode === "board" && openSym)) return;
+      /* A step through the board moved on while this was on its way. */
+      if (mode === "board" && openSym !== forSym) return;
       if (reply && reply.detail) { renderDetail(reply.detail); loadAlert(); }
       else showDetailError((reply && reply.message) || "No quote available.");
     }).catch(function () { showDetailError("The plugin is not responding."); });
@@ -1161,7 +1273,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   }
 
   function showDetailError(message) {
-    /* In an open row, say it where the chart would be, and keep the board. */
+    /* In the panel, say it where the chart would be, and keep the board. */
     if (mode === "board") { chartNotice(message); return; }
     $("detail").hidden = true;
     var box = $("d-error");
@@ -1172,8 +1284,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
 
   function renderDetail(d) {
     $("d-error").hidden = true;
-    /* On a board the detail view stays hidden: only its chart block is shown, inside the open row. */
-    $("detail").hidden = mode === "board";
+    /* On a board the detail view is the panel, shown only while it has a symbol. */
+    $("detail").hidden = mode === "board" && !openSym;
     symbol = d.symbol;
     if (!onBoard) {
       $("chip").textContent = d.exchange ? d.symbol + " · " + d.exchange : d.symbol;
@@ -1210,6 +1322,11 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     logo.onerror = function () { logo.hidden = true; };
     website = d.website || "";
     $("d-company").textContent = d.company ? "· " + d.company : "";
+    /* In a board's panel the symbol leads, as it does in the list beside it; the name follows. */
+    if (onBoard) {
+      $("d-name").textContent = d.symbol;
+      $("d-company").textContent = [d.name !== d.symbol ? d.name : "", d.company || ""].filter(Boolean).join(" · ");
+    }
     $("d-web").hidden = !website;
 
     var note = $("d-note");
@@ -1681,6 +1798,8 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   paintPin();
   $("change").append(swapIcon());
   $("change").addEventListener("click", function (e) { e.stopPropagation(); toggleAdd(false, "change"); });
+  $("d-close").append(closeIcon());
+  $("d-close").addEventListener("click", function () { closePanel(); });
   $("back").append(chevronLeftIcon());
   $("back").addEventListener("click", function () { show("board"); });
   $("add").append(plusIcon());
@@ -1702,7 +1821,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (e.key === "Escape" && typing) { t.blur(); e.preventDefault(); return; }
     if (e.key === "Escape") {
       e.preventDefault();
-      if (onBoard && mode === "board" && openSym) closeRow();
+      if (onBoard && mode === "board" && openSym) closePanel();
       else if (onBoard && mode !== "board") show("board");
       else if (mode === "search" && !openedForSearch) show("detail");
       else post("close");
@@ -1724,7 +1843,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     if (mode === "board" && e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown") && boardCards.length > 1 && boardSort === "custom") {
       e.preventDefault();
       var to = cursor + (e.key === "ArrowDown" ? 1 : -1);
-      if (to >= 0 && to < boardCards.length) { if (openSym) closeRow(); moveRow(cursor, to); }
+      if (to >= 0 && to < boardCards.length) moveRow(cursor, to);
       return;
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -1736,11 +1855,11 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       if ((e.key === "ArrowDown" || e.key === "ArrowUp") && boardCards.length) {
         e.preventDefault();
         cursor = (cursor + (e.key === "ArrowDown" ? 1 : boardCards.length - 1)) % boardCards.length;
+        /* With the panel out, the arrows step it through the list; without, they move the cursor. */
+        if (openSym) panelTo(boardCards[cursor].symbol);
         markCursor();
-        var r = rowEls[boardCards[cursor].symbol];
-        if (r) r.row.scrollIntoView({ block: "nearest" });
       }
-      if (e.key === "Enter" && boardCards[cursor]) { e.preventDefault(); toggleRow(boardCards[cursor].symbol); }
+      if (e.key === "Enter" && boardCards[cursor]) { e.preventDefault(); panelTo(boardCards[cursor].symbol); }
       var d = ["1", "2", "3", "4", "5", "6"].indexOf(e.key);
       if (d >= 0 && openSym) selectRange(["1d", "5d", "1mo", "6mo", "ytd", "1y"][d]);
       return;

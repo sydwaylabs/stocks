@@ -10,14 +10,14 @@ A Stream Deck plugin by Sydway Labs, for macOS 12 or later and Stream Deck 6.9 o
 |---|---|---|
 | **Ticker** (symbol set) | Refresh now | Open the detail window: a chart (1D, 5D, 1M, 6M, YTD, 1Y), day and 52-week ranges, volume, market cap, and **Change symbol** |
 | **Ticker** (empty key) | Open search | Open search |
-| **Watchlist** | Next symbol (pauses auto-rotation for a minute) | The board: a row per symbol, one opening in place to its chart |
+| **Watchlist** | Next symbol (pauses auto-rotation for a minute) | The board: a row per symbol, with the chart and figures of the key's symbol beside it |
 | **Watchlist** (empty key) | Search, adding to the list | Search, adding to the list |
 | **Watchlist** on a Stream Deck + dial | Turn: next or previous symbol · Push or touch: the board | — |
 | **Price Alert** (fired) | Clear the alert | Detail window |
 | **Price Alert** (watching) | Check now | Detail window |
 | **Price Alert** (empty key) | Open search | Open search |
 
-**Watchlist** keeps up to 12 symbols on one key, with a dot for each along the bottom. Type them
+**Watchlist** keeps up to 10 symbols on one key, with a dot for each along the bottom. Type them
 into the key's settings or add them with search, which stays open so you can add several. It can
 also move on by itself every 5, 10 or 30 seconds. Holding it opens the board: a row for every
 symbol with the day's line, its price and today's move, the one on the key marked. Every row
@@ -48,7 +48,7 @@ and a sparkline of the day. Drag a Ticker onto a key, press it, type a company n
 symbol can also be typed straight into the key's settings — Yahoo's spelling, so Toronto listings
 end in `.TO` (`RY.TO`), the TSX Venture in `.V`, London in `.L`, and the S&P/TSX Composite is
 `^GSPTSE`. The key's settings also set how often it refreshes
-(1, 5 or 15 minutes), whether it shows the price or only the change, and whether the change is
+(every minute by default, or every 5 or 15), whether it shows the price or only the change, and whether the change is
 shown as a percentage (+1.23%) or an amount (+$4.20).
 
 A refresh only reads public quotes, so a tap is safe to act on; the hold opens the window, as on
