@@ -212,34 +212,48 @@ final class WindowController: NSObject, NSWindowDelegate, WKNavigationDelegate, 
     }
 
     /**
-     * Resizes the content to the height the page asked for, keeping the top edge where it is.
+     * Resizes the content to the size the page asked for: a height, and optionally a width.
      *
      * The top stays put because that is where the pointer and the eye are: a window that grew
      * upwards would move the row somebody had just clicked out from under them. It grows down, and
      * is clamped to the screen — a page cannot push the window off the bottom of the display, where
-     * nothing could be reached. Width is the page's business only at launch.
+     * nothing could be reached.
+     *
+     * A width — a watchlist board opening its details beside the list — grows or shrinks the window
+     * evenly on both sides, so a window opened in the middle of the screen stays there; it slides
+     * back inside the screen's edges if that would cross one.
      */
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == "resize", let window = window,
               let body = message.body as? [String: Any],
               let requested = (body["height"] as? NSNumber)?.doubleValue,
               requested.isFinite, requested > 0 else { return }
+        let requestedWidth = (body["width"] as? NSNumber)?.doubleValue
 
         let area = (window.screen ?? NSScreen.main)?.visibleFrame
         let current = window.contentRect(forFrameRect: window.frame)
-        var frame = window.frameRect(forContentRect: NSRect(x: 0, y: 0, width: current.width, height: CGFloat(requested.rounded())))
+        var width = current.width
+        if let requestedWidth, requestedWidth.isFinite, requestedWidth > 0 {
+            width = CGFloat(requestedWidth.rounded())
+        }
+        var frame = window.frameRect(forContentRect: NSRect(x: 0, y: 0, width: width, height: CGFloat(requested.rounded())))
         let top = window.frame.maxY
+        var x = window.frame.midX - frame.size.width / 2
         if let area {
+            frame.size.width = min(frame.size.width, area.width)
             frame.size.height = min(frame.size.height, area.height)
+            x = min(max(area.minX, window.frame.midX - frame.size.width / 2), area.maxX - frame.size.width)
             // Keep the top, unless growing down would leave the bottom off screen; then slide up.
             let y = max(area.minY, top - frame.size.height)
-            frame.origin = NSPoint(x: window.frame.origin.x, y: y)
+            frame.origin = NSPoint(x: x.rounded(), y: y)
         } else {
-            frame.origin = NSPoint(x: window.frame.origin.x, y: top - frame.size.height)
+            frame.origin = NSPoint(x: x.rounded(), y: top - frame.size.height)
         }
-        if abs(frame.size.height - window.frame.size.height) < 1 { return }
-        log("resize: asked \(Int(requested)) content, frame now \(Int(frame.size.width))x\(Int(frame.size.height))")
-        window.setFrame(frame, display: true, animate: false)
+        let widthChanged = abs(frame.size.width - window.frame.size.width) >= 1
+        if !widthChanged && abs(frame.size.height - window.frame.size.height) < 1 { return }
+        log("resize: asked \(Int(width))x\(Int(requested)) content, frame now \(Int(frame.size.width))x\(Int(frame.size.height))")
+        // A change of width is a panel coming or going, and reads better as a move than a jump.
+        window.setFrame(frame, display: true, animate: widthChanged)
     }
 
     /**

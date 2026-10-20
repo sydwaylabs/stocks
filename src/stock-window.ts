@@ -8,7 +8,8 @@ import { LogoCache } from "./lib/logo-cache.js";
 import { CHART_RANGES, ProviderError, type ChartRange, type SearchResult } from "./lib/providers/types.js";
 import { CONDITIONS, type AlertView, type Condition } from "./lib/alert.js";
 import type { QuoteService } from "./lib/quotes.js";
-import { renderPage, WINDOW_HEIGHT, WINDOW_WIDTH } from "./lib/window-page.js";
+import { BOARD_WIDE_WIDTH, BOARD_WINDOW_HEIGHT, renderPage, WINDOW_HEIGHT, WINDOW_WIDTH } from "./lib/window-page.js";
+import { WATCHLIST_MAX } from "./lib/settings.js";
 import { findHosts, serveWindow, WindowLaunchError, type WindowMessage } from "./window-host.js";
 
 /**
@@ -29,7 +30,7 @@ export type StockWindowOptions = {
   symbol: () => string;
   /**
    * Assigns a picked result to the key, or adds it to a list. May return a line for the window to
-   * show ("Added MSFT — 3 of 12"), or a refusal.
+   * show ("Added MSFT — 3 of 10"), or a refusal.
    */
   onSelect: (result: SearchResult) => Promise<void | { ok?: boolean; message?: string }>;
   /** Open in search even if the key has a symbol. */
@@ -93,6 +94,9 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
   // On a board, the detail view shows whichever card was opened, which only a symbol on the list
   // can be. Elsewhere it is always the key's own symbol.
   let viewing = initialSymbol;
+  // A board that will show its panel opens at the width it needs, so the window does not widen
+  // once it is on screen.
+  const opensWide = !!board && mode === "board" && !options.openAdd && board.list().length > 0;
   const shown = (): string => (board ? (board.list().includes(viewing) ? viewing : "") : options.symbol());
 
   const onMessage = async (message: WindowMessage): Promise<unknown> => {
@@ -100,11 +104,11 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
       case "board": {
         if (!board) return {};
         const list = board.list();
-        // A press of refresh asks past the cache; the minute's poll does not.
-        const force = message.force === true;
+        // Rows are Yahoo only and never forced: ⟳ forces the panel's symbol, and the list is never
+        // more than a poll old. See QuoteService.snapshot.
         const cards = await Promise.all(list.map(async (symbol): Promise<BoardCard> => {
           try {
-            const [snap, logo] = await Promise.all([options.quotes.snapshot(symbol, { force }), options.quotes.logo(symbol)]);
+            const [snap, logo] = await Promise.all([options.quotes.snapshot(symbol, { lite: true }), options.quotes.logo(symbol)]);
             const card = buildBoardCard(snap);
             if (logo) {
               logoUrls.set(card.symbol, logo);
@@ -116,7 +120,7 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
             return { symbol, name: symbol, trend: "flat", points: [], error: notFound ? "Not found" : "No data" };
           }
         }));
-        return { cards: sortCards(cards, board.sort()), onKey: options.symbol(), max: 12, changeAs: board.changeAs(), sort: board.sort() };
+        return { cards: sortCards(cards, board.sort()), onKey: options.symbol(), max: WATCHLIST_MAX, changeAs: board.changeAs(), sort: board.sort() };
       }
       case "focus": {
         if (!board || typeof message.symbol !== "string" || !board.list().includes(message.symbol)) return { ok: false };
@@ -243,8 +247,8 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         onOpen: options.onOpen,
         onWarn: (text) => streamDeck.logger.warn(text),
         timeoutMs: IDLE_TIMEOUT_MS,
-        width: WINDOW_WIDTH,
-        height: WINDOW_HEIGHT,
+        width: opensWide ? BOARD_WIDE_WIDTH : WINDOW_WIDTH,
+        height: mode === "board" ? BOARD_WINDOW_HEIGHT : WINDOW_HEIGHT,
         title: windowTitle,
         links,
         serveAsset: async (name, params) => {

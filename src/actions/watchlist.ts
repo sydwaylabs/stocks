@@ -16,7 +16,7 @@ import streamDeck, {
 import { renderDial, renderKey, toDataUri, type KeyView } from "../lib/key-image.js";
 import { ProviderError } from "../lib/providers/types.js";
 import { addSymbol, mergeWatchlist, parseSymbols, WATCHLIST_EDITABLE, WATCHLIST_MAX, type WatchlistSettings } from "../lib/settings.js";
-import { unitOf, type Snapshot } from "../lib/quotes.js";
+import { isStale, unitOf, type Snapshot } from "../lib/quotes.js";
 import { handleSharedMessage, LONG_PRESS_MS, onKeyChange, quotes } from "../services.js";
 import { openStockWindow } from "../stock-window.js";
 import { ticker } from "../tick.js";
@@ -37,11 +37,14 @@ import { ticker } from "../tick.js";
  */
 
 /** A symbol's quote is reused for this long before it is asked for again. */
-const FRESH_MS = 2 * 60_000;
+const FRESH_MS = 60_000;
 /** A press pauses auto-rotation for this long, so the symbol you stepped to stays put. */
 const PRESS_PAUSE_MS = 60_000;
-/** Redraw at least this often, so the showing symbol stays current when rotation is off. */
-const REFRESH_MS = 5 * 60_000;
+/**
+ * Refresh the showing symbol this often. Through the quote cache, not past it: an open market
+ * gets a new quote each time, a closed one costs nothing (QuoteService keeps its last answer).
+ */
+const REFRESH_MS = 60_000;
 
 type PluginMessageEvent = Parameters<NonNullable<SingletonAction<WatchlistSettings>["onSendToPlugin"]>>[0];
 
@@ -181,7 +184,7 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
       ticker.clear(refreshId(id));
       return;
     }
-    ticker.set(refreshId(id), REFRESH_MS, () => void this.show(instance, { force: true }));
+    ticker.set(refreshId(id), REFRESH_MS, () => void this.show(instance, { tick: true }));
     if (instance.settings.rotateSec > 0 && instance.list.length > 1) {
       ticker.set(rotateId(id), instance.settings.rotateSec * 1000, () => {
         if (Date.now() >= instance.pausedUntil) void this.move(instance, 1);
@@ -199,8 +202,12 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
     await this.show(instance);
   }
 
-  /** Draws the symbol showing, fetching its quote first if what we have is old. */
-  private async show(instance: Instance, options: { force?: boolean } = {}): Promise<void> {
+  /**
+   * Draws the symbol showing, fetching its quote first if what we have is old. `force` is a press,
+   * past every cache; `tick` is the minute's refresh, which always asks but through QuoteService's
+   * cache (the key's own copy would still be inside FRESH_MS when the minute comes round).
+   */
+  private async show(instance: Instance, options: { force?: boolean; tick?: boolean } = {}): Promise<void> {
     const symbol = instance.list[instance.index];
     if (!symbol) {
       await this.paint(instance, { kind: "empty", caption: "add symbols" });
@@ -210,10 +217,10 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
     const cached = instance.snaps.get(symbol);
     if (cached) await this.draw(instance, symbol, cached);
     else await this.paint(instance, { kind: "loading", symbol, dots });
-    if (!options.force && cached && Date.now() - cached.fetchedAt < FRESH_MS) return;
+    if (!options.force && !options.tick && cached && Date.now() - cached.fetchedAt < FRESH_MS) return;
 
     try {
-      const snap = await quotes.snapshot(symbol, options);
+      const snap = await quotes.snapshot(symbol, { force: options.force });
       instance.snaps.set(symbol, snap);
       // Draw only if this symbol is still the one showing; a press may have moved on.
       if (instance.list[instance.index] === symbol) await this.draw(instance, symbol, snap);
@@ -237,7 +244,7 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
       currency: unitOf(snap),
       display: instance.settings.display,
       changeAs: instance.settings.changeAs,
-      stale: Date.now() - snap.fetchedAt > 2 * REFRESH_MS,
+      stale: isStale(snap, 2 * REFRESH_MS),
       dots: { count: instance.list.length, active: instance.index },
     });
   }

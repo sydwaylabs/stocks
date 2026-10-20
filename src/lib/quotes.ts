@@ -51,6 +51,14 @@ export const liveProviders: Providers = {
 
 /** A quote this fresh is served from the cache, so keys that tick together share one request. */
 const QUOTE_TTL_MS = 20_000;
+/**
+ * A quote fetched after its market closed cannot change until the next session, so it is kept
+ * this long instead — a board left open overnight or over a weekend stops asking every 30 seconds.
+ * Short enough that the next open shows within a few minutes.
+ */
+const CLOSED_TTL_MS = 5 * 60_000;
+/** A forced fetch ("now") this soon after the last answer gets that answer: presses in a row are free. */
+const FORCE_FLOOR_MS = 5_000;
 /** Market cap, ratios and the earnings date barely move within a session. */
 const FUNDAMENTALS_TTL_MS = 60 * 60_000;
 /** A 5-day or longer chart changes slowly enough to keep while the window is open. */
@@ -67,11 +75,13 @@ const EARNINGS_TTL_MS = 6 * 60 * 60_000;
 const US_TICKER = /^[A-Z]{1,5}$/;
 
 type Cached<T> = { at: number; value: T };
+/** `lite`: Yahoo's answer only, where a key would have priced it from Finnhub (see `snapshot`). */
+type CachedSnapshot = Cached<Snapshot> & { lite?: boolean };
 
 export class QuoteService {
   private readonly providers: Providers;
   private readonly now: () => number;
-  private readonly quotes = new Map<string, Cached<Snapshot>>();
+  private readonly quotes = new Map<string, CachedSnapshot>();
   private readonly inflight = new Map<string, Promise<Snapshot>>();
   private readonly fundamentals = new Map<string, Cached<Details>>();
   private readonly earningsCache = new Map<string, Cached<Earnings | undefined>>();
@@ -144,20 +154,40 @@ export class QuoteService {
   }
 
   /**
-   * The current quote for `symbol`. `force` skips the cache (a press means "now"), but still joins
-   * a request already on its way rather than starting a second.
+   * The current quote for `symbol`. `force` skips the cache (a press means "now") unless the last
+   * answer is only seconds old, and still joins a request already on its way rather than starting
+   * a second.
+   *
+   * `lite` asks Yahoo alone, for a board's rows: a row needs Yahoo's chart for its line anyway, and
+   * a Finnhub quote per row would spend the free plan's 60 a minute on a list polled every 30
+   * seconds. A lite answer serves only other lite asks; a key or the panel still gets Finnhub's.
    */
-  async snapshot(symbol: string, options: { force?: boolean } = {}): Promise<Snapshot> {
+  async snapshot(symbol: string, options: { force?: boolean; lite?: boolean } = {}): Promise<Snapshot> {
     const id = normalise(symbol);
+    const lite = options.lite === true;
     const cached = this.quotes.get(id);
-    if (!options.force && cached && this.now() - cached.at < QUOTE_TTL_MS) return cached.value;
-    const pending = this.inflight.get(id);
+    if (cached && (lite || !cached.lite)) {
+      const age = this.now() - cached.at;
+      if (options.force ? age < FORCE_FLOOR_MS : this.fresh(cached)) return cached.value;
+    }
+    const pending = this.inflight.get(id) ?? (lite ? this.inflight.get(`${id}:lite`) : undefined);
     if (pending) return pending;
-    const request = this.fetchSnapshot(id).finally(() => this.inflight.delete(id));
-    this.inflight.set(id, request);
+    // Lite only matters where a key would have been used; for an index or a coin it is the full answer.
+    const reduced = lite && US_TICKER.test(id) && !!(await this.getKey());
+    const slot = reduced ? `${id}:lite` : id;
+    const request = this.fetchSnapshot(id, reduced).finally(() => this.inflight.delete(slot));
+    this.inflight.set(slot, request);
     const value = await request;
-    this.quotes.set(id, { at: this.now(), value });
+    this.quotes.set(id, { at: this.now(), value, lite: reduced || undefined });
     return value;
+  }
+
+  /** Young enough to serve — or fetched after its market closed, which keeps it longer. */
+  private fresh(cached: CachedSnapshot): boolean {
+    const age = this.now() - cached.at;
+    if (age < QUOTE_TTL_MS) return true;
+    const session = cached.value.series?.session;
+    return !!session && cached.at >= session.end && age < CLOSED_TTL_MS;
   }
 
   /** The snapshot plus market cap and the 52-week range, for the detail window. */
@@ -181,7 +211,8 @@ export class QuoteService {
     }
     const key = `${id}:${range}`;
     const cached = this.ranges.get(key);
-    if (!options.force && cached && this.now() - cached.at < (range === "1d" ? QUOTE_TTL_MS : RANGE_TTL_MS)) return cached.value;
+    const age = cached ? this.now() - cached.at : Infinity;
+    if (cached && age < (options.force ? FORCE_FLOOR_MS : range === "1d" ? QUOTE_TTL_MS : RANGE_TTL_MS)) return cached.value;
     const { series } = await this.providers.yahooRange(id, range);
     this.ranges.set(key, { at: this.now(), value: series });
     return series;
@@ -200,10 +231,10 @@ export class QuoteService {
     }
   }
 
-  private async fetchSnapshot(symbol: string): Promise<Snapshot> {
+  private async fetchSnapshot(symbol: string, yahooOnly = false): Promise<Snapshot> {
     // Finnhub's free plan prices plain US tickers only, so it is not asked about an index, a
     // Toronto or London listing, or a coin — Yahoo answers those either way.
-    const key = US_TICKER.test(symbol) ? await this.getKey() : null;
+    const key = !yahooOnly && US_TICKER.test(symbol) ? await this.getKey() : null;
     const [chart, fh] = await Promise.allSettled([
       this.providers.yahooChart(symbol),
       key ? this.providers.finnhubQuote(symbol, key) : Promise.reject(new ProviderError("unauthorized", "no key")),
@@ -278,6 +309,17 @@ export function daysUntil(date: string, today: string): number {
 export function unitOf(snap: Pick<Snapshot, "quote" | "details">): string | undefined {
   const index = snap.details.instrumentType === "INDEX" || snap.quote.symbol.startsWith("^");
   return index ? POINTS : snap.quote.currency;
+}
+
+/**
+ * Older than `maxAge`, for a key to fade its figures — except a quote fetched after its session
+ * ended, which is the day's final word however long ago it was asked for. (The cache keeps those
+ * for minutes, so without this a key on a closed market would fade every night.)
+ */
+export function isStale(snap: Pick<Snapshot, "fetchedAt" | "series">, maxAge: number, now = Date.now()): boolean {
+  const session = snap.series?.session;
+  if (session && snap.fetchedAt >= session.end) return false;
+  return now - snap.fetchedAt > maxAge;
 }
 
 export function normalise(symbol: string): string {

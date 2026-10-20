@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ProviderError, type Quote } from "./providers/types.js";
 import type { ChartResult } from "./providers/yahoo.js";
-import { daysUntil, exchangeDate, QuoteService, unitOf, type Providers } from "./quotes.js";
+import { daysUntil, exchangeDate, isStale, QuoteService, unitOf, type Providers } from "./quotes.js";
 
 function chart(symbol: string, overrides: Partial<Quote> = {}): ChartResult {
   return {
@@ -109,12 +109,56 @@ describe("QuoteService.snapshot", () => {
     expect(providers.yahooChart).toHaveBeenCalledTimes(2);
   });
 
-  it("skips the cache when forced", async () => {
+  it("skips the cache when forced, but not twice within a few seconds", async () => {
+    let now = 1_000_000;
     const providers = stubs();
-    const service = new QuoteService(() => null, { providers });
+    const service = new QuoteService(() => null, { providers, now: () => now });
     await service.snapshot("AAPL");
+    now += 6_000;
     await service.snapshot("AAPL", { force: true });
     expect(providers.yahooChart).toHaveBeenCalledTimes(2);
+    now += 2_000;
+    await service.snapshot("AAPL", { force: true });
+    expect(providers.yahooChart).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks only Yahoo for a lite quote, which never stands in for a full one", async () => {
+    const providers = stubs();
+    const service = new QuoteService(() => "k", { providers });
+    expect((await service.snapshot("AAPL", { lite: true })).quote.source).toBe("yahoo");
+    expect(providers.finnhubQuote).not.toHaveBeenCalled();
+    // A key or the panel still gets Finnhub's price...
+    expect((await service.snapshot("AAPL")).quote.source).toBe("finnhub");
+    expect(providers.finnhubQuote).toHaveBeenCalledTimes(1);
+    // ...and that full answer serves the list too.
+    await service.snapshot("AAPL", { lite: true });
+    expect(providers.yahooChart).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps a lite quote for an index, which a key would not have priced anyway, as the full one", async () => {
+    const providers = stubs();
+    const service = new QuoteService(() => "k", { providers });
+    await service.snapshot("^GSPC", { lite: true });
+    await service.snapshot("^GSPC");
+    expect(providers.yahooChart).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a quote fetched after the close for minutes, not seconds", async () => {
+    let now = 1_000_000;
+    const closed = { ...chart("AAPL"), series: { points: [98, 99, 100], times: [0, 1, 2], utcOffset: 0, session: { start: 0, end: now - 60_000 } } };
+    const open = { ...chart("MSFT"), series: { points: [98, 99, 100], times: [0, 1, 2], utcOffset: 0, session: { start: 0, end: now + 3_600_000 } } };
+    const providers = stubs({ yahooChart: vi.fn(async (s: string) => (s === "AAPL" ? closed : open)) });
+    const service = new QuoteService(() => null, { providers, now: () => now });
+    await service.snapshot("AAPL");
+    await service.snapshot("MSFT");
+    now += 60_000;
+    await service.snapshot("AAPL");
+    await service.snapshot("MSFT");
+    // Only the open market was asked again.
+    expect(providers.yahooChart).toHaveBeenCalledTimes(3);
+    now += 5 * 60_000;
+    await service.snapshot("AAPL");
+    expect(providers.yahooChart).toHaveBeenCalledTimes(4);
   });
 });
 
@@ -211,12 +255,14 @@ describe("QuoteService.chart", () => {
   });
 
   it("asks past the cache when forced, as the window's refresh does", async () => {
+    let now = 1_000_000;
     const providers = stubs();
-    const service = new QuoteService(() => null, { providers });
+    const service = new QuoteService(() => null, { providers, now: () => now });
     await service.chart("AAPL", "5d");
+    await service.chart("AAPL", "1d");
+    now += 6_000;
     await service.chart("AAPL", "5d", { force: true });
     expect(providers.yahooRange).toHaveBeenCalledTimes(2);
-    await service.chart("AAPL", "1d");
     await service.chart("AAPL", "1d", { force: true });
     expect(providers.yahooChart).toHaveBeenCalledTimes(2);
   });
@@ -267,6 +313,16 @@ describe("QuoteService.search", () => {
     const providers = stubs();
     expect(await new QuoteService(() => null, { providers }).search("  ")).toEqual([]);
     expect(providers.yahooSearch).not.toHaveBeenCalled();
+  });
+});
+
+describe("isStale", () => {
+  const series = (end: number) => ({ points: [1, 2], times: [0, 1], utcOffset: 0, session: { start: 0, end } });
+  it("fades an old quote from an open market, never one fetched after the close", () => {
+    expect(isStale({ fetchedAt: 1_000, series: series(5_000) }, 60_000, 200_000)).toBe(true);
+    expect(isStale({ fetchedAt: 1_000, series: series(5_000) }, 60_000, 30_000)).toBe(false);
+    expect(isStale({ fetchedAt: 6_000, series: series(5_000) }, 60_000, 9_000_000)).toBe(false);
+    expect(isStale({ fetchedAt: 1_000 }, 60_000, 200_000)).toBe(true);
   });
 });
 

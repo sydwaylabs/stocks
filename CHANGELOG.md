@@ -12,9 +12,11 @@ notes and the Marketplace "what's new" text are generated from this file.
 
 ### Added
 
-- **Watchlist**: up to 12 symbols on one key. Press for the next; hold for a board with a row per
-  symbol — price, move and the day's line — where a row opens in place to its chart and stats,
-  can be put on the key or removed, and can be dragged (or moved with ⌥↑ / ⌥↓) to reorder. Sort
+- **Watchlist**: up to 10 symbols on one key. Press for the next; hold for a board with a row per
+  symbol — price, move and the day's line — and beside it the chart and stats of the symbol the key
+  is showing. Click a row, or use ↑ / ↓, to show another; put it on the key or remove it from the
+  panel, or close the panel with ✕. The window keeps one height, with room for the whole
+  list. Rows can be dragged (or moved with ⌥↑ / ⌥↓) to reorder. Sort
   the board by today's change, name or price; your own order is kept, and the sort is remembered.
   Click a change to switch the whole board, and the key, between % and the amount. Optional
   rotation every 5, 10 or 30 seconds. Add symbols by typing them, or from the board's + search,
@@ -38,8 +40,8 @@ notes and the Marketplace "what's new" text are generated from this file.
   ignored every hold afterwards, so its window could not be opened again.
 
 - **Ticker** shows a live quote for any stock, ETF, fund, index or coin: price, today's change and
-  a sparkline, refreshed every 1, 5 or 15 minutes. Quotes that are more than two refreshes old are
-  dimmed. Today's change can be shown as a percentage or as an amount.
+  a sparkline, refreshed every minute (or every 5 or 15). Quotes that are more than two refreshes
+  old are dimmed — but not overnight: a price from after the close is final. Today's change can be shown as a percentage or as an amount.
 - Press an empty key to search by company or fund name, so you never need to know the ticker.
 - Every window has **Refresh** (or R), which fetches the latest prices past any cache, and
   **Pin** (or P), which keeps it open until you close it: no closing after ten idle minutes or

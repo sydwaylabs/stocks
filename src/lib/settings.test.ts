@@ -4,14 +4,14 @@ import { addSymbol, mergeAlert, mergeWatchlist, mergeWithDefaults, parseSymbols 
 
 describe("mergeWithDefaults", () => {
   it("fills a new key with defaults", () => {
-    expect(mergeWithDefaults({})).toEqual({ symbol: "", name: "", intervalMin: 5, display: "price", changeAs: "percent", pinWindow: false });
-    expect(mergeWithDefaults(undefined).intervalMin).toBe(5);
+    expect(mergeWithDefaults({})).toEqual({ symbol: "", name: "", intervalMin: 1, display: "price", changeAs: "percent", pinWindow: false });
+    expect(mergeWithDefaults(undefined).intervalMin).toBe(1);
   });
 
   it("coerces the interval from a string and clamps it to the choices", () => {
     expect(mergeWithDefaults({ intervalMin: "15" as unknown as number }).intervalMin).toBe(15);
-    expect(mergeWithDefaults({ intervalMin: "0" as unknown as number }).intervalMin).toBe(5);
-    expect(mergeWithDefaults({ intervalMin: 7 }).intervalMin).toBe(5);
+    expect(mergeWithDefaults({ intervalMin: "0" as unknown as number }).intervalMin).toBe(1);
+    expect(mergeWithDefaults({ intervalMin: 7 }).intervalMin).toBe(1);
   });
 
   it("normalises a hand-typed symbol", () => {
@@ -57,7 +57,7 @@ describe("watchlist settings", () => {
   it("parses symbols with commas or spaces, without repeats, up to twelve", () => {
     expect(parseSymbols("aapl, msft  btc-usd,AAPL")).toEqual(["AAPL", "MSFT", "BTC-USD"]);
     expect(parseSymbols("^gsptse RY.TO EURUSD=X")).toEqual(["^GSPTSE", "RY.TO", "EURUSD=X"]);
-    expect(parseSymbols("a b c d e f g h i j k l m n")).toHaveLength(12);
+    expect(parseSymbols("a b c d e f g h i j k l m n")).toHaveLength(10);
     expect(parseSymbols("<script> ;")).toEqual([]);
   });
 

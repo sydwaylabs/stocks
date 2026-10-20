@@ -19,7 +19,7 @@ export const EDITABLE = ["symbol", "intervalMin", "display", "changeAs"] as cons
 
 export const INTERVALS = [1, 5, 15] as const;
 
-const DEFAULTS: Required<TickerSettings> = { symbol: "", name: "", intervalMin: 5, display: "price", changeAs: "percent", pinWindow: false };
+const DEFAULTS: Required<TickerSettings> = { symbol: "", name: "", intervalMin: 1, display: "price", changeAs: "percent", pinWindow: false };
 
 /**
  * One place where saved settings are merged and coerced. sdpi-components saves every field as a
@@ -96,7 +96,8 @@ export type WatchlistSettings = {
 
 export const WATCHLIST_EDITABLE = ["symbols", "rotateSec", "display", "changeAs"] as const;
 export const ROTATE_CHOICES = [0, 5, 10, 30] as const;
-export const WATCHLIST_MAX = 12;
+/** As many as the board shows without scrolling. */
+export const WATCHLIST_MAX = 10;
 
 export function mergeWatchlist(saved: Partial<WatchlistSettings> | undefined): Required<WatchlistSettings> {
   const base = { symbols: "", rotateSec: 0, display: "price", changeAs: "percent", pinWindow: false, boardSort: "custom", ...saved };
@@ -111,7 +112,7 @@ export function mergeWatchlist(saved: Partial<WatchlistSettings> | undefined): R
   };
 }
 
-/** "aapl, msft  btc-usd,AAPL" → ["AAPL", "MSFT", "BTC-USD"]: commas or spaces, no repeats, at most 12. */
+/** "aapl, msft  btc-usd,AAPL" → ["AAPL", "MSFT", "BTC-USD"]: commas or spaces, no repeats, at most {@link WATCHLIST_MAX}. */
 export function parseSymbols(text: string): string[] {
   const seen = new Set<string>();
   for (const raw of text.split(/[,\s]+/)) {

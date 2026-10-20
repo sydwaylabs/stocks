@@ -24,20 +24,27 @@ Three actions, all drawn as SVG (`src/lib/key-image.ts`), all sharing one `Quote
 Finnhub key handling through `src/services.ts`, and one inspector script (`ui/stocks-inspector.js`):
 
 - **Ticker** (`com.sydwaylabs.stocks.ticker`): one quote. Tap refreshes, hold opens the window.
-- **Watchlist** (`.watchlist`): up to 12 symbols, dots across the top. Tap moves on (pausing
-  rotation); hold opens the board (`mode: "board"`): rows, one open at a time. Opening a row moves the
-  detail view's `#d-body` (chart, stats, source) into it, so the chart code is shared; the rest of
-  the detail view stays hidden. Messages `focus`, `showOnKey` and `remove` are checked against the
-  list. Rows are kept by symbol and refreshed in place, so the poll never rebuilds the open one.
-  Every row opens closed (the user's call); the keyboard cursor starts on the key's row.
+- **Watchlist** (`.watchlist`): up to 10 symbols (`WATCHLIST_MAX`: as many rows as fit the
+  board's height, so the list never scrolls), dots across the top. Tap moves on (pausing
+  rotation); hold opens the board (`mode: "board"`): the list, and beside it the whole detail view
+  as a panel (`.split.side`), so the chart code is shared. The panel opens on the key's symbol and
+  the window launches wide (`BOARD_WIDE_WIDTH`) for it. ✕ or Esc closes it for that visit only:
+  remembering a close was tried, and since Esc closes the panel before the window, keys ended up
+  opening without it. The window widens and narrows about its centre (`resize` takes a `width` in
+  `native/host.swift` — a kit candidate) and keeps one height (`BOARD_VIEW_HEIGHT`, a stock's full
+  panel; it only ever grows), so a short list leaves room under it with one "Add symbol" slot.
+  Rows were tried opening in place: the window grew with each one (the user's call to change).
+  No CSS animation on the panel: one in a window not yet on screen is stuck at its first frame.
+  Messages `focus`, `showOnKey` and `remove` are checked against the list. Rows are kept by symbol
+  and refreshed in place. ↑↓ step the panel through the list; a detail reply for a symbol stepped
+  past is dropped. Removing the symbol shown moves the panel to the next.
   Adding is a popover from + (Timekeeper's world-clock pattern), over the board; an empty key's
   press opens the board with it open (`openAdd`). Ticker and Price Alert change symbol from the same
   popover, opened by the ⇄ icon button in the same corner, which closes on a pick. The full-screen
   search view remains only for an empty Ticker or Alert key's first press.
   Note from Timekeeper: WebKit draws the system checkbox as a bare tick with no box on the dark
   ground — use a drawn control there.
-  Reordering follows Timekeeper's card drag (lift, others slide, settle); an open row closes when
-  a drag starts so slots are even. `reorder` is accepted only as a permutation of the list.
+  Reordering follows Timekeeper's card drag (lift, others slide, settle). `reorder` is accepted only as a permutation of the list.
   Search adds and stays open. Note: an offscreen WKWebView does not advance CSS animations, so a
   headless preview of a faded-in chart shows it blank — render with the window on screen.
 - **Watchlist on a dial** (`Controllers: Keypad, Encoder`): turn moves (any number of ticks,
@@ -72,7 +79,7 @@ Every action: hold opens the window, and an empty key opens search on any press.
   longer ranges are spaced by bar. `QuoteService.chart` caches longer ranges for 10 minutes.
 - **Profiles** (name, industry, logo URL) are one Finnhub call per symbol, cached a day in
   `QuoteService.profile` and shared by the detail view and `QuoteService.logo`, which a board uses
-  for its rows — so a full board costs at most 12 calls a day, well inside 60 a minute.
+  for its rows — so a full board costs at most 10 calls a day, well inside 60 a minute.
 - **Logos** are cached in `~/Library/Caches/com.sydwaylabs.stocks/logos/` (`src/lib/logo-cache.ts`,
   30 days, raster images only, sniffed by their bytes) and served to the window at
   `/asset/logo?symbol=…` — a route added to `src/window-host.ts` (`serveAsset`), worth harvesting
@@ -83,8 +90,9 @@ Every action: hold opens the window, and an empty key opens search on any press.
   gets the one page tooltip (stat labels, change pills, the trash button). Hint texts live in
   `HINTS` in `src/lib/detail-data.ts`.
 - **Watchlist key dots** sit on the bottom edge (y=135), matching Timekeeper's world clock.
-- **Pin and refresh**: the window's ⟳ forces past the quote and chart caches (`force` on the
-  `board`, `snapshot` and `chart` messages). 📌 sets the key's `pinWindow`: `serveWindow`'s
+- **Pin and refresh**: the window's ⟳ forces what is being looked at past the quote and chart
+  caches (`force` on the `snapshot` and `chart` messages) — on a board, the panel's symbol only;
+  the list is re-read through the cache. 📌 sets the key's `pinWindow`: `serveWindow`'s
   `keepOpen` (added to `src/window-host.ts`, a kit candidate) skips the idle close, and
   `onWillDisappear` leaves a pinned window open. After Quick Clips' stay-open pin.
 - **Board sort** (`boardSort`, remembered per key): the plugin sorts with `sortCards` before
@@ -97,7 +105,13 @@ Every action: hold opens the window, and an empty key opens search on any press.
 - **Window**: one page, two views (`src/lib/window-page.ts`). `select` is accepted only for a
   symbol in the last search results (`SearchSession`).
 - **Refresh**: the shared ticker (`src/tick.ts`), one subscription per key; the quote cache
-  (20 s) makes keys on the same symbol share one request.
+  (20 s) makes keys on the same symbol share one request. A quote fetched after its session ended
+  is kept 5 minutes (nothing moves until the next open); a forced fetch within 5 s of the last
+  answer gets that answer. A board's rows ask `lite` (Yahoo only — no Finnhub quote per row, so
+  a 10-row board polled every 30 s stays well inside Finnhub's 60 a minute); a lite answer never
+  serves a key or the panel. Key timers (Ticker every `intervalMin`, default 1; Watchlist every
+  minute) go through the cache, never `force` — only a press forces — so a closed market costs
+  nothing. Keys fade with `isStale`, which never fades a quote fetched after the close.
 - **Finnhub extras** (key only): `/stock/metric` ratios, `/stock/profile2` company facts and
   `/calendar/earnings`, all in `QuoteService.detailed`; the key's earnings badge uses
   `QuoteService.earnings`, cached 6 h. Company websites reach `serveWindow`'s `links` as the
