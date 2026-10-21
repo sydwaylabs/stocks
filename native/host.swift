@@ -219,9 +219,10 @@ final class WindowController: NSObject, NSWindowDelegate, WKNavigationDelegate, 
      * is clamped to the screen — a page cannot push the window off the bottom of the display, where
      * nothing could be reached.
      *
-     * A width — a watchlist board opening its details beside the list — grows or shrinks the window
-     * evenly on both sides, so a window opened in the middle of the screen stays there; it slides
-     * back inside the screen's edges if that would cross one.
+     * A width grows or shrinks the window evenly on both sides, so a window opened in the middle of
+     * the screen stays there — or, with `anchor: "left"`, from its right edge only, so what is on the
+     * left holds still: a watchlist board's details then slide out from beside the list. Either way
+     * it slides back inside the screen's edges if it would cross one.
      */
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == "resize", let window = window,
@@ -229,6 +230,7 @@ final class WindowController: NSObject, NSWindowDelegate, WKNavigationDelegate, 
               let requested = (body["height"] as? NSNumber)?.doubleValue,
               requested.isFinite, requested > 0 else { return }
         let requestedWidth = (body["width"] as? NSNumber)?.doubleValue
+        let anchorLeft = (body["anchor"] as? String) == "left"
 
         let area = (window.screen ?? NSScreen.main)?.visibleFrame
         let current = window.contentRect(forFrameRect: window.frame)
@@ -238,11 +240,13 @@ final class WindowController: NSObject, NSWindowDelegate, WKNavigationDelegate, 
         }
         var frame = window.frameRect(forContentRect: NSRect(x: 0, y: 0, width: width, height: CGFloat(requested.rounded())))
         let top = window.frame.maxY
-        var x = window.frame.midX - frame.size.width / 2
         if let area {
             frame.size.width = min(frame.size.width, area.width)
             frame.size.height = min(frame.size.height, area.height)
-            x = min(max(area.minX, window.frame.midX - frame.size.width / 2), area.maxX - frame.size.width)
+        }
+        var x = anchorLeft ? window.frame.minX : window.frame.midX - frame.size.width / 2
+        if let area {
+            x = min(max(area.minX, x), area.maxX - frame.size.width)
             // Keep the top, unless growing down would leave the bottom off screen; then slide up.
             let y = max(area.minY, top - frame.size.height)
             frame.origin = NSPoint(x: x.rounded(), y: y)

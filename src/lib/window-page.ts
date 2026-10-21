@@ -1,5 +1,6 @@
 import { TIP_CSS, TIP_SCRIPT } from "./page-tip.js";
 import { WATCHLIST_MAX } from "./settings.js";
+import { SYMBOL_ICONS } from "./sf-symbols.js";
 
 /**
  * The Stocks window: one page with two views.
@@ -27,6 +28,8 @@ export type WindowInit = {
   alert?: boolean;
   /** A board that opens with its add popover already open — an empty watchlist's press. */
   openAdd?: boolean;
+  /** A board that opens on its list alone; a row's click still opens the panel. */
+  listOnly?: boolean;
   /** The window is pinned open (stays until closed by hand). */
   pinned?: boolean;
 };
@@ -107,15 +110,17 @@ button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-of
 .mono { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 700; color: var(--fg); letter-spacing: -0.02em; }
 .name { color: var(--fg-dim); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .company { color: var(--fg-faint); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.name-row .spacer { flex: 1; }
-.link { background: none; border: none; padding: 0; color: var(--series); font-size: 12px; }
-.link:hover { text-decoration: underline; }
 .price-row { display: flex; align-items: baseline; gap: 10px; }
 .price { font-size: 32px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .ccy { color: var(--fg-dim); font-size: 13px; }
 /* Only the figures carry the up/down colour; the period beside them is a plain label. */
 .move { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .move-label { color: var(--fg-dim); font-weight: 400; margin-left: 4px; }
+/* Pre-market or after-hours, on the move's own line so the hero keeps its height; the label and
+   price quiet, only the move in colour, as with today's. */
+.move-ext { margin-left: 14px; white-space: nowrap; }
+.move-ext .ext-label { color: var(--fg-dim); font-weight: 400; margin-right: 5px; }
+.move-ext .ext-price { color: var(--fg); margin-right: 5px; }
 .up { color: var(--good); } .down { color: var(--down); } .flat { color: var(--fg-dim); }
 .chart-head { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 6px; }
 .seg { display: inline-flex; background: var(--card); border: 1px solid var(--card-line); border-radius: 7px; padding: 2px; gap: 2px; }
@@ -216,7 +221,8 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 /* A board: the list and, beside it, the detail view as a panel. The window widens for the panel
    and keeps one height whatever the list's length, so neither opening it nor adding a symbol
    moves anything; a short list leaves room under it. */
-.split { flex: 1; min-height: 0; display: flex; }
+/* Clipped, not squeezed: while the window widens or narrows, the panel is cut off at its edge. */
+.split { flex: 1; min-height: 0; display: flex; overflow: hidden; }
 .split > main { min-width: 0; }
 #board { padding-top: 10px; padding-bottom: 10px; }
 .split.side #board { flex: 0 0 ${BOARD_LIST_WIDTH}px; box-sizing: border-box; }
@@ -234,8 +240,15 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .side .price { font-size: 22px; }
 .side .move { font-size: 13px; }
 .side .chart-head { margin-top: 14px; }
-#d-close { align-self: flex-start; }
+/* News and website: one group of icon buttons in the corner, level with the logo's top. */
+.hero-acts { display: flex; gap: 6px; align-self: flex-start; margin-left: auto; }
 .wacts { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 10px; }
+/* The panel's last line sits on its bottom edge, so Show on key and Remove stay put while ↑↓ step
+   through symbols with more or fewer figures. A column only while shown: display would otherwise
+   beat the hidden attribute. Nothing in it shrinks — a tall panel scrolls, as before. */
+.split.side #detail:not([hidden]) { display: flex; flex-direction: column; }
+.split.side #detail > * { flex-shrink: 0; }
+.side .wacts { margin-top: auto; padding-top: 10px; }
 .wacts button { font-size: 12px; padding: 0 10px; height: 28px; box-sizing: border-box; border-radius: 7px; }
 .wacts .iconbtn { padding: 0; }
 /* Icon buttons after Timekeeper's: 28px, with their own tooltip, since the native host does not show
@@ -318,15 +331,22 @@ body.dragging-row, body.dragging-row * { cursor: grabbing !important; user-selec
 .pop-note.bad { color: var(--slow); }
 .iconbtn.on { background: var(--kbd); color: var(--fg); }
 /* Pinned: pressed in, in white rather than Quick Clips' green, which here would read as "up". */
-#pin.on, #sort.on { background: #4a4a50; border-color: #6a6a70; color: #fff; }
-/* The sort menu: the add popover's frame, a short list with a tick on the current choice. */
-.popover.menu { width: 210px; padding: 6px; }
-.menu-item { display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; text-align: left;
-  font-size: 12.5px; padding: 6px 8px; border: 0; border-radius: 6px; background: none; color: var(--fg); cursor: pointer; }
-.menu-item:hover { background: var(--hover); }
-/* "mtick", not "tick": that is the chart axis's label class, absolutely placed. */
-.menu-item .mtick { width: 12px; flex: none; color: var(--fg); }
-.menu-item .sub { margin-left: auto; color: var(--fg-faint); font-size: 11px; }
+#pin.on, #details.on { background: #4a4a50; border-color: #6a6a70; color: #fff; }
+/* News: the add popover's frame, a few headlines, each opening in the browser. */
+.popover.news { width: 380px; padding: 6px; }
+.news-item { display: flex; gap: 10px; align-items: flex-start; width: 100%; box-sizing: border-box; text-align: left; font: inherit; padding: 6px 8px;
+  border: 0; border-radius: 6px; background: none; color: var(--fg); cursor: pointer; }
+.news-item:hover { background: var(--hover); }
+/* The story's picture, over the publisher's initial: a missing or slow picture still leaves a mark,
+   as a company's logo does. */
+.news-thumb { position: relative; flex: none; width: 40px; height: 40px; border-radius: 7px; overflow: hidden; margin-top: 1px;
+  display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: var(--fg-dim);
+  background: linear-gradient(160deg, #4a4a50, #2c2c30); box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset; }
+.news-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.news-text { min-width: 0; }
+.news-item .t { font-size: 12.5px; line-height: 16px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.news-item .w { font-size: 11px; color: var(--fg-faint); margin-top: 2px; }
+.news-note { font-size: 12px; color: var(--fg-faint); padding: 6px 8px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 #refresh.spinning svg { animation: spin .8s linear infinite; }
 @media (prefers-reduced-motion: reduce) { #refresh.spinning svg { animation: none; opacity: .5; } }
@@ -361,9 +381,9 @@ ${TIP_CSS}
   <span class="spacer"></span>
   <!-- In the corner where + is on the board: one place, its job set by the view. -->
   <!-- Refresh and pin, on the views that show prices; then the view's own button. -->
-  <button id="sort" class="iconbtn" aria-label="Sort" aria-haspopup="menu" data-hint="Sort" hidden></button>
   <button id="refresh" class="iconbtn" aria-label="Refresh" data-hint="Refresh now" hidden></button>
   <button id="pin" class="iconbtn" aria-label="Pin open" aria-pressed="false" data-hint="Keep this window open" hidden></button>
+  <button id="details" class="iconbtn" aria-label="Details" aria-pressed="true" hidden></button>
   <button id="back" class="iconbtn" aria-label="Back to watchlist" data-hint="Back to watchlist" hidden></button>
   <!-- Neutral, not Timekeeper's green Add: on this screen green means a price went up. -->
   <button id="add" class="iconbtn" aria-label="Add symbol" data-hint="Add symbol" hidden></button>
@@ -373,7 +393,7 @@ ${TIP_CSS}
 
 <div class="split" id="split">
 <main id="board" hidden><div class="wl" id="cards"></div></main>
-<div class="popover menu" id="sort-sheet" role="menu" aria-label="Sort" hidden></div>
+<div class="popover news" id="news-sheet" role="dialog" aria-label="News" hidden></div>
 <div class="popover" id="add-sheet" role="dialog" aria-label="Add symbol" hidden>
   <div class="title" id="pop-title">Add symbol</div>
   <input id="add-q" type="text" placeholder="Company, fund, ETF or crypto" autocomplete="off" spellcheck="false" aria-label="Search">
@@ -388,13 +408,14 @@ ${TIP_CSS}
       <div class="name-row">
         <p class="name" id="d-name"></p>
         <span class="company" id="d-company"></span>
-        <span class="spacer"></span>
-        <button class="link" id="d-web" hidden>Website</button>
       </div>
       <div class="price-row"><span class="price" id="d-price"></span><span class="ccy" id="d-ccy"></span></div>
       <div class="move" id="d-move"></div>
     </div>
-    <button id="d-close" class="iconbtn" aria-label="Close details" data-hint="Close details" hidden></button>
+    <div class="hero-acts">
+      <button id="d-news" class="iconbtn" aria-label="News" aria-haspopup="dialog" data-hint="News" hidden></button>
+      <button id="d-web" class="iconbtn" aria-label="Company website" data-hint="Company website" hidden></button>
+    </div>
   </div>
   <!-- The chart, stats and source line. On a watchlist board this whole block moves into the
        open row; elsewhere it stays here under the price. -->
@@ -452,6 +473,7 @@ ${TIP_CSS}
 <script>
 var TOKEN = ${scriptJson(token)};
 var INIT = ${scriptJson(init)};
+var SF = ${scriptJson(SYMBOL_ICONS)};
 function post(type, extra) {
   var body = Object.assign({ type: type }, extra || {});
   return fetch("/message?t=" + encodeURIComponent(TOKEN), { method: "POST", body: JSON.stringify(body) })
@@ -530,7 +552,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       var width = 0;
       if (mode === "board") {
         height = $("bar").offsetHeight + boardHeight() + $("footer").offsetHeight;
-        width = openSym ? ${BOARD_WIDE_WIDTH} : ${WINDOW_WIDTH};
+        width = openSym ? ${BOARD_WIDE_WIDTH} : ${BOARD_LIST_WIDTH};
       } else if (mode === "detail") {
         var view = $("detail").hidden ? $("d-error") : $("detail");
         view.style.flex = "none";
@@ -538,11 +560,13 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
         view.style.flex = "";
       }
       /* An open popover floats over the board; the window grows only if it would run off the bottom. */
-      ["add-sheet", "sort-sheet"].forEach(function (id) {
+      ["add-sheet", "news-sheet"].forEach(function (id) {
         var pop = $(id);
         if (!pop.hidden) height = Math.max(height, pop.offsetTop + pop.offsetHeight + 12);
       });
-      var size = width ? { height: height, width: width } : { height: height };
+      /* A board grows and shrinks from its right edge, so the list holds still and the panel slides
+         out beside it, and back. */
+      var size = width ? { height: height, width: width, anchor: "left" } : { height: height };
       if (window.__nativeHost) {
         try { window.webkit.messageHandlers.resize.postMessage(size); } catch (e) { /* older host */ }
       } else {
@@ -570,6 +594,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
 
   function show(next) {
     mode = next;
+    closeNews();
     $("detail").hidden = true;
     $("d-error").hidden = true;
     $("board").hidden = next !== "board";
@@ -579,9 +604,9 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     /* A board's views lead back to it; its own view offers Add. */
     $("back").hidden = !onBoard || next === "board";
     $("refresh").hidden = next === "search";
-    $("sort").hidden = next !== "board";
     $("pin").hidden = next === "search";
     $("add").hidden = !onBoard || next !== "board";
+    $("details").hidden = !onBoard || next !== "board";
     clearInterval(poll);
     if (next === "board") {
       setFooter(boardFooter());
@@ -635,6 +660,33 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   }
 
   var pinned = !!INIT.pinned;
+  /* The board remembers whether its panel was showing, as the key's "Hold opens" setting: shown by
+     the details button or a row's click, hidden by the button or Esc — so Esc, Esc opens the next
+     board on its list. The button is pressed in, like the pin, while the panel shows. (Remembering
+     Esc was once dropped, when nothing showed the state or brought the panel back; the button
+     does both now. The user's call.) */
+  var withDetails = !INIT.listOnly;
+
+  function paintDetails() {
+    var b = $("details");
+    b.classList.toggle("on", withDetails);
+    b.setAttribute("aria-pressed", withDetails ? "true" : "false");
+    b.dataset.hint = withDetails ? "Hide details" : "Show details";
+  }
+
+  function toggleDetails() {
+    if (openSym) closePanel();
+    else if (boardCards[cursor]) panelTo(boardCards[cursor].symbol);
+  }
+
+  /* Saved only when it changes, so stepping through rows with the panel out costs nothing. */
+  function rememberPanel(on) {
+    if (on === withDetails) return;
+    withDetails = on;
+    paintDetails();
+    post("boardOpens", { details: on });
+  }
+
   function paintPin() {
     var b = $("pin");
     b.classList.toggle("on", pinned);
@@ -666,75 +718,80 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     return svg;
   }
 
-  /* ---- the board's sort ---- */
-
-  var boardSort = "custom";
-  var SORTS = [
-    ["custom", "My order", "drag to arrange"],
-    ["change", "Today's change", "% · gains first"],
-    ["name", "Name", "A–Z"],
-    ["price", "Price", "high first"],
-  ];
-
   function boardFooter() {
-    return boardSort === "custom"
-      ? [["↑↓", "move"], ["⌥↑↓", "reorder"], ["↵", "open"], ["c", "% / $"], ["1–6", "range"], ["a", "add"], ["esc", "close"]]
-      : [["↑↓", "move"], ["↵", "open"], ["c", "% / $"], ["1–6", "range"], ["a", "add"], ["esc", "close"]];
+    return [["↑↓", "move"], ["⌥↑↓", "reorder"], ["↵", "open"], ["c", "% / $"], ["1–6", "range"], ["a", "add"], ["esc", "close"]];
   }
 
-  function paintSort() {
-    var b = $("sort");
-    var current = SORTS.find(function (x) { return x[0] === boardSort; }) || SORTS[0];
-    /* Pressed in while the board is sorted, so a reordered list never looks like your own order. */
-    b.classList.toggle("on", boardSort !== "custom");
-    b.dataset.hint = boardSort === "custom" ? "Sort" : "Sorted by " + current[1].toLowerCase();
-    if (mode === "board") setFooter(boardFooter());
-  }
+  /* ---- news ---- */
 
-  function toggleSort() {
-    var pop = $("sort-sheet");
-    if (!pop.hidden) { closeSort(); return; }
+  /* Bumped on every open and close, so a reply for a popover since closed, or for a symbol since
+     stepped past, is dropped. */
+  var newsSeq = 0;
+
+  function toggleNews() {
+    var pop = $("news-sheet");
+    if (!pop.hidden) { closeNews(); return; }
     closeAdd();
-    pop.replaceChildren();
-    SORTS.forEach(function (x) {
-      var item = el("button", "menu-item");
-      item.setAttribute("role", "menuitemradio");
-      item.setAttribute("aria-checked", String(x[0] === boardSort));
-      item.append(el("span", "mtick", x[0] === boardSort ? "✓" : ""), el("span", "", x[1]), el("span", "sub", x[2]));
-      item.addEventListener("click", function () {
-        closeSort();
-        if (x[0] === boardSort) return;
-        boardSort = x[0];
-        paintSort();
-        post("sort", { value: boardSort }).then(function () { loadBoard(); });
-      });
-      pop.append(item);
-    });
-    var b = $("sort").getBoundingClientRect();
+    var seq = ++newsSeq;
+    pop.replaceChildren(el("div", "news-note", "Loading…"));
+    var b = $("d-news").getBoundingClientRect();
     pop.style.top = (b.bottom + 9) + "px";
     pop.style.right = Math.max(8, window.innerWidth - b.right) + "px";
     pop.style.setProperty("--arrow", Math.max(8, b.width / 2 - 7) + "px");
     pop.hidden = false;
+    $("d-news").classList.add("on");
+    $("d-news").setAttribute("aria-expanded", "true");
     fit();
+    post("news").then(function (reply) {
+      if (seq !== newsSeq) return;
+      var items = (reply && reply.news) || [];
+      pop.replaceChildren();
+      items.forEach(function (n) {
+        var item = el("button", "news-item");
+        var thumb = el("span", "news-thumb", (n.publisher || n.title).charAt(0).toUpperCase());
+        if (n.thumb) {
+          var img = el("img");
+          img.alt = "";
+          img.hidden = true;
+          img.onload = function () { img.hidden = false; };
+          img.src = n.thumb + "&t=" + encodeURIComponent(TOKEN);
+          thumb.append(img);
+        }
+        var text = el("span", "news-text");
+        text.append(el("div", "t", n.title), el("div", "w", [n.publisher, ago(n.publishedAt)].filter(Boolean).join(" · ")));
+        item.append(thumb, text);
+        /* The plugin opens it only if it is a link it just sent. */
+        item.addEventListener("click", function () { post("openLink", { url: n.url }); closeNews(); });
+        pop.append(item);
+      });
+      if (!items.length) pop.append(el("div", "news-note", (reply && reply.message) || "No recent news."));
+      fit();
+    }, function () {
+      if (seq === newsSeq) pop.replaceChildren(el("div", "news-note", "News is unavailable right now."));
+    });
   }
 
-  function closeSort() {
-    $("sort-sheet").hidden = true;
+  function closeNews() {
+    newsSeq++;
+    if ($("news-sheet").hidden) return;
+    $("news-sheet").hidden = true;
+    $("d-news").classList.remove("on");
+    $("d-news").setAttribute("aria-expanded", "false");
     fit();
   }
 
   document.addEventListener("pointerdown", function (e) {
-    if ($("sort-sheet").hidden) return;
-    if ($("sort-sheet").contains(e.target) || $("sort").contains(e.target)) return;
-    closeSort();
+    if ($("news-sheet").hidden) return;
+    if ($("news-sheet").contains(e.target) || $("d-news").contains(e.target)) return;
+    closeNews();
   });
 
-  /* Lucide arrow-down-up (ISC). */
-  function sortIcon() {
-    var svg = svgEl("svg", { viewBox: "0 0 24 24", width: 15, height: 15, fill: "none", stroke: "currentColor",
-      "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
-    svg.append(svgEl("path", { d: "m3 16 4 4 4-4" }), svgEl("path", { d: "M7 20V4" }), svgEl("path", { d: "m21 8-4-4-4 4" }), svgEl("path", { d: "M17 4v16" }));
-    return svg;
+  /* "4m ago", "3h ago", "2d ago": a headline's age. */
+  function ago(ms) {
+    var m = Math.max(0, Math.round((Date.now() - ms) / 60000));
+    if (m < 60) return m + "m ago";
+    if (m < 48 * 60) return Math.round(m / 60) + "h ago";
+    return Math.round(m / 1440) + "d ago";
   }
 
   /* ---- board ---- */
@@ -762,17 +819,17 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       boardCards = (reply && reply.cards) || [];
       boardOnKey = (reply && reply.onKey) || "";
       if (reply && reply.changeAs) changeAs = reply.changeAs;
-      if (reply && reply.sort) { boardSort = reply.sort; paintSort(); }
       boardMax = (reply && reply.max) || ${WATCHLIST_MAX};
       $("chip").textContent = "Watchlist · " + boardCards.length + " of " + boardMax;
       /* The panel opens on the symbol the key is showing — what you were just looking at — unless
-         the board opened to add. */
+         the board opened to add, or the key is set to open on the list alone. The cursor starts
+         on the key's row either way. */
       if (firstBoard) {
         firstBoard = false;
         cursor = Math.max(0, boardCards.findIndex(function (c) { return c.symbol === boardOnKey; }));
         renderBoard();
         if (INIT.openAdd) setTimeout(function () { toggleAdd(true, "add"); }, 0);
-        else if (boardCards[cursor]) panelTo(boardCards[cursor].symbol);
+        else if (boardCards[cursor] && !INIT.listOnly) panelTo(boardCards[cursor].symbol);
         return;
       }
       renderBoard();
@@ -952,14 +1009,6 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     return svg;
   }
 
-  /* Lucide x (ISC). */
-  function closeIcon() {
-    var svg = svgEl("svg", { viewBox: "0 0 24 24", width: 15, height: 15, fill: "none", stroke: "currentColor",
-      "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
-    svg.append(svgEl("path", { d: "M18 6 6 18M6 6l12 12" }));
-    return svg;
-  }
-
   /* Lucide plus (ISC). */
   function plusIcon() {
     var svg = svgEl("svg", { viewBox: "0 0 24 24", width: 16, height: 16, fill: "none", stroke: "currentColor",
@@ -994,7 +1043,6 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     $("split").classList.add("side");
     $("detail").classList.add("side");
     $("detail").hidden = false;
-    $("d-close").hidden = false;
   }
 
   /*
@@ -1020,10 +1068,13 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     $("d-mono").textContent = initialOf(card.name, sym);
     $("d-logo").hidden = true;
     $("d-web").hidden = true;
+    $("d-news").hidden = true;
+    closeNews();
     $("d-rows").replaceChildren();
     $("d-meta").textContent = "";
     chartNotice(card.error ? card.error : "Loading…");
     showPanel();
+    rememberPanel(true);
     panelActions();
     markCursor();
     fit();
@@ -1039,14 +1090,24 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
    * always opens on the key's symbol, and remembering a close (Esc closes the panel before the
    * window) left keys opening without it.
    */
+  /* The window's animated narrowing, with a margin: the panel is drawn until it is over. */
+  var PANEL_SLIDE_MS = 350;
+
   function closePanel() {
     if (!openSym) return;
     openSym = "";
-    $("split").classList.remove("side");
-    $("detail").classList.remove("side");
-    $("detail").hidden = true;
+    closeNews();
+    rememberPanel(false);
     markCursor();
     fit();
+    /* Still drawn while the window narrows over it, so it slides away rather than vanishing and
+       leaving an empty strip to close. Reopened in the meantime, it stays. */
+    setTimeout(function () {
+      if (openSym) return;
+      $("split").classList.remove("side");
+      $("detail").classList.remove("side");
+      $("detail").hidden = true;
+    }, PANEL_SLIDE_MS);
   }
 
   /* ---- adding, in a popover over the board ---- */
@@ -1067,7 +1128,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     var pop = $("add-sheet");
     var opening = forceOpen || pop.hidden;
     if (anchor) popAnchor = anchor;
-    if (opening && !$("sort-sheet").hidden) closeSort();
+    if (opening) closeNews();
     pop.hidden = !opening;
     $(popAnchor).classList.toggle("on", opening);
     if (opening) {
@@ -1181,8 +1242,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   function rowList() { return boardCards.map(function (c) { return rowEls[c.symbol].row; }); }
 
   function beginDrag(e, i) {
-    /* Only your own order can be rearranged; a sorted view is the sort's to arrange. */
-    if (e.button !== 0 || boardCards.length < 2 || boardSort !== "custom") return;
+    if (e.button !== 0 || boardCards.length < 2) return;
     drag = { from: i, target: i, startY: e.clientY, lastY: e.clientY, active: false, row: rowEls[boardCards[i].symbol].row };
   }
 
@@ -1328,6 +1388,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       $("d-company").textContent = [d.name !== d.symbol ? d.name : "", d.company || ""].filter(Boolean).join(" · ");
     }
     $("d-web").hidden = !website;
+    $("d-news").hidden = false;
 
     var note = $("d-note");
     note.hidden = !d.note;
@@ -1342,6 +1403,14 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   }
 
   var NS = "http://www.w3.org/2000/svg";
+  /* An SF Symbol from sf-symbols.ts, filled, on its own ink box: \`height\` sets the size. */
+  function sfIcon(name, height) {
+    var s = SF[name], w = Number(s.viewBox.split(" ")[2]);
+    var svg = svgEl("svg", { viewBox: s.viewBox, height: height, width: (height * w / 24).toFixed(2), fill: "currentColor", "aria-hidden": "true" });
+    svg.append(svgEl("path", { d: s.d }));
+    return svg;
+  }
+
   function svgEl(tag, attrs) {
     var e = document.createElementNS(NS, tag);
     Object.keys(attrs).forEach(function (k) { e.setAttribute(k, String(attrs[k])); });
@@ -1399,6 +1468,12 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     var label = src === today ? "today" : RANGE_NAMES[range];
     var figures = [src.change, src.changePct ? "(" + src.changePct + ")" : ""].join(" ").trim();
     move.replaceChildren(el("span", src.trend, figures), el("span", "move-label", label));
+    var x = today && today.extended;
+    if (x) {
+      var ext = el("span", "move-ext");
+      ext.append(el("span", "ext-label", x.label), el("span", "ext-price", x.price), el("span", x.trend, x.changePct));
+      move.append(ext);
+    }
   }
 
   function chartNotice(text) {
@@ -1789,17 +1864,18 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
     debounce = setTimeout(runSearch, 250);
   });
 
-  $("sort").append(sortIcon());
-  $("sort").addEventListener("click", function (e) { e.stopPropagation(); toggleSort(); });
   $("refresh").append(refreshIcon());
   $("refresh").addEventListener("click", refreshNow);
   $("pin").append(pinIcon());
   $("pin").addEventListener("click", togglePin);
   paintPin();
+  $("details").append(sfIcon("sidebar.right", 13));
+  $("details").addEventListener("click", toggleDetails);
+  paintDetails();
   $("change").append(swapIcon());
   $("change").addEventListener("click", function (e) { e.stopPropagation(); toggleAdd(false, "change"); });
-  $("d-close").append(closeIcon());
-  $("d-close").addEventListener("click", function () { closePanel(); });
+  $("d-news").append(sfIcon("newspaper", 14));
+  $("d-web").append(sfIcon("globe", 14));
   $("back").append(chevronLeftIcon());
   $("back").addEventListener("click", function () { show("board"); });
   $("add").append(plusIcon());
@@ -1809,11 +1885,12 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
   });
   /* The plugin opens it only if it is the website it just sent for this symbol. */
   $("d-web").addEventListener("click", function () { if (website) post("openLink", { url: website }); });
+  $("d-news").addEventListener("click", function (e) { e.stopPropagation(); toggleNews(); });
 
   document.addEventListener("keydown", function (e) {
     /* An open popover takes Esc first, wherever the focus is. */
     if (e.key === "Escape" && addOpen()) { e.preventDefault(); closeAdd(); return; }
-    if (e.key === "Escape" && !$("sort-sheet").hidden) { e.preventDefault(); closeSort(); return; }
+    if (e.key === "Escape" && !$("news-sheet").hidden) { e.preventDefault(); closeNews(); return; }
     /* Typing in the alert's form is typing: no single-key shortcuts while a field has the keys. */
     var t = e.target;
     var typing = t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA") && t.id !== "q";
@@ -1840,7 +1917,7 @@ window.addEventListener("unhandledrejection", function (e) { post("error", { mes
       }
       return;
     }
-    if (mode === "board" && e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown") && boardCards.length > 1 && boardSort === "custom") {
+    if (mode === "board" && e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown") && boardCards.length > 1) {
       e.preventDefault();
       var to = cursor + (e.key === "ArrowDown" ? 1 : -1);
       if (to >= 0 && to < boardCards.length) moveRow(cursor, to);

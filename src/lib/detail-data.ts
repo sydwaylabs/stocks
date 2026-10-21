@@ -2,7 +2,7 @@ import { buildChart, type ChartData } from "./chart-data.js";
 import { compact, formatChange, formatChangeShort, formatPct, formatPriceLong, trendOf, type Trend } from "./format.js";
 import { unitOf, type Snapshot } from "./quotes.js";
 import { POINTS } from "./format.js";
-import type { Earnings, SearchResult } from "./providers/types.js";
+import type { Earnings, Quote, SearchResult } from "./providers/types.js";
 
 /**
  * What the window shows, already formatted, so the page only lays it out. Formatting stays in
@@ -18,6 +18,8 @@ export type DetailData = {
   change: string;
   changePct: string;
   trend: Trend;
+  /** Outside regular hours, a US listing's price in pre-market or after-hours trading. */
+  extended?: ExtendedLine;
   /** Today's chart. Longer ranges are asked for separately, when picked. */
   chart?: ChartData;
   /** `hint` explains the figure, shown on hover; plain words for someone new to the term. */
@@ -33,6 +35,27 @@ export type DetailData = {
   fetchedAt: number;
   note?: string;
 };
+
+export type ExtendedLine = { label: "Pre-market" | "After hours"; price: string; change: string; changePct: string; trend: Trend };
+
+/**
+ * The last pre-market or after-hours trade against the last close — overnight and over a weekend
+ * too, as Apple's Stocks shows it — or nothing once the regular session has traded, or when it
+ * has not moved.
+ */
+export function extendedLine(quote: Quote): ExtendedLine | undefined {
+  const x = quote.extended;
+  if (!x || !quote.price) return undefined;
+  const change = x.price - quote.price;
+  if (Math.abs(change) < 1e-9) return undefined;
+  return {
+    label: x.session === "pre" ? "Pre-market" : "After hours",
+    price: formatPriceLong(x.price),
+    change: formatChange(change),
+    changePct: formatPct((change / quote.price) * 100),
+    trend: trendOf(change),
+  };
+}
 
 const SOURCE_NAMES = { yahoo: "Yahoo Finance", finnhub: "Finnhub", nasdaq: "Nasdaq" } as const;
 
@@ -68,6 +91,7 @@ export function buildDetail(snap: Snapshot): DetailData {
     change: formatChange(quote.change),
     changePct: formatPct(quote.changePct),
     trend: trendOf(quote.change ?? quote.changePct),
+    extended: extendedLine(quote),
     chart: snap.series && snap.series.points.length > 1 ? buildChart(snap.series, "1d") : undefined,
     rows,
     company: [details.industry, details.country].filter(Boolean).join(" · ") || undefined,
@@ -154,29 +178,7 @@ export type BoardCard = {
   error?: string;
   /** The window's own address for the cached logo, when there is one. */
   logo?: string;
-  /** Raw figures for sorting the board; the strings above are for showing. */
-  sortPct?: number;
-  sortPrice?: number;
 };
-
-export const BOARD_SORTS = ["custom", "change", "name", "price"] as const;
-export type BoardSort = (typeof BOARD_SORTS)[number];
-
-/**
- * A board's rows in a sort's order. "custom" is the list as the user arranged it. Rows with no
- * quote go last in every sort, so a failed fetch does not take the top of the board.
- */
-export function sortCards(cards: BoardCard[], sort: BoardSort): BoardCard[] {
-  if (sort === "custom") return cards;
-  const missing = (c: BoardCard) => (sort === "change" ? c.sortPct : sort === "price" ? c.sortPrice : 0) === undefined || !!c.error;
-  return [...cards].sort((a, b) => {
-    const ma = missing(a), mb = missing(b);
-    if (ma !== mb) return ma ? 1 : -1;
-    if (sort === "name") return a.symbol.localeCompare(b.symbol);
-    if (sort === "change") return (b.sortPct ?? 0) - (a.sortPct ?? 0);
-    return (b.sortPrice ?? 0) - (a.sortPrice ?? 0);
-  });
-}
 
 export const CARD_POINTS = 60;
 
@@ -190,8 +192,6 @@ export function buildBoardCard(snap: Snapshot): BoardCard {
     change: formatChange(quote.change),
     changePct: formatPct(quote.changePct),
     changeAmount: formatChangeShort(quote.change, unitOf(snap)),
-    sortPct: quote.changePct,
-    sortPrice: quote.price,
     trend: trendOf(quote.change ?? quote.changePct),
     points: thin(series?.points ?? [], CARD_POINTS),
     prevClose: quote.prevClose,

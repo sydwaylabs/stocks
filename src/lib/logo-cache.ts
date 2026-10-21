@@ -91,23 +91,28 @@ export class LogoCache {
     }
   }
 
-  private async download(url: string): Promise<Logo | null> {
-    if (!/^https:\/\//.test(url)) return null;
-    try {
-      const res = await (this.options.fetchImpl ?? fetch)(url, {
-        headers: { "User-Agent": USER_AGENT },
-        redirect: "follow",
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
-      if (!res.ok) return null;
-      const length = Number(res.headers.get("content-length") ?? 0);
-      if (length > MAX_BYTES) return null;
-      const body = Buffer.from(await res.arrayBuffer());
-      if (body.length > MAX_BYTES) return null;
-      const type = sniffImage(body);
-      return type ? { type, body } : null;
-    } catch {
-      return null;
-    }
+  private download(url: string): Promise<Logo | null> {
+    return downloadImage(url, this.options.fetchImpl);
+  }
+}
+
+/** An image from `url`: https only, at most {@link MAX_BYTES}, and a raster type by its bytes. */
+export async function downloadImage(url: string, fetchImpl?: Fetch): Promise<Logo | null> {
+  if (!/^https:\/\//.test(url)) return null;
+  try {
+    const res = await (fetchImpl ?? fetch)(url, {
+      headers: { "User-Agent": USER_AGENT },
+      redirect: "follow",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const length = Number(res.headers.get("content-length") ?? 0);
+    if (length > MAX_BYTES) return null;
+    const body = Buffer.from(await res.arrayBuffer());
+    if (body.length > MAX_BYTES) return null;
+    const type = sniffImage(body);
+    return type ? { type, body } : null;
+  } catch {
+    return null;
   }
 }

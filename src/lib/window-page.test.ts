@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildBoardCard, buildDetail, formatEarnings, SearchSession, sortCards, thin, typeLabel, type BoardCard } from "./detail-data.js";
+import { buildBoardCard, buildDetail, extendedLine, formatEarnings, SearchSession, thin, typeLabel, type BoardCard } from "./detail-data.js";
 import type { Snapshot } from "./quotes.js";
 import { renderPage, scriptJson } from "./window-page.js";
 
@@ -123,16 +123,6 @@ describe("board cards", () => {
     expect(card.currency).toBeUndefined();
   });
 
-  it("sorts the board by change, name or price, failed rows last, leaving my order alone", () => {
-    const c = (symbol: string, pct?: number, price?: number, error?: string): BoardCard =>
-      ({ symbol, name: symbol, trend: "flat", points: [], sortPct: pct, sortPrice: price, error });
-    const cards = [c("MSFT", -1.9, 529), c("AAPL", 0.4, 343), c("ZZZ", undefined, undefined, "Not found"), c("TSLA", -2.2, 354)];
-    expect(sortCards(cards, "custom").map((x) => x.symbol)).toEqual(["MSFT", "AAPL", "ZZZ", "TSLA"]);
-    expect(sortCards(cards, "change").map((x) => x.symbol)).toEqual(["AAPL", "MSFT", "TSLA", "ZZZ"]);
-    expect(sortCards(cards, "name").map((x) => x.symbol)).toEqual(["AAPL", "MSFT", "TSLA", "ZZZ"]);
-    expect(sortCards(cards, "price").map((x) => x.symbol)).toEqual(["MSFT", "TSLA", "AAPL", "ZZZ"]);
-  });
-
   it("thins only long series", () => {
     expect(thin([1, 2, 3], 60)).toEqual([1, 2, 3]);
     expect(thin([0, 1, 2, 3, 4, 5, 6], 3)).toEqual([0, 3, 6]);
@@ -148,5 +138,19 @@ describe("search session", () => {
     expect(session.pick(42)).toBeUndefined();
     session.remember([{ symbol: "MSFT", name: "Microsoft", type: "EQUITY" }]);
     expect(session.pick("AAPL")).toBeUndefined();
+  });
+});
+
+describe("extendedLine", () => {
+  const quote = (extended?: { price: number; at: number; session: "pre" | "post" }) => ({ symbol: "TSLA", price: 373.71, source: "yahoo" as const, extended });
+
+  it("labels the trade by its session, against the last close", () => {
+    expect(extendedLine(quote({ price: 380.45, at: 0, session: "post" }))).toMatchObject({ label: "After hours", price: "380.45", changePct: "+1.80%", trend: "up" });
+    expect(extendedLine(quote({ price: 370, at: 0, session: "pre" }))).toMatchObject({ label: "Pre-market", trend: "down" });
+  });
+
+  it("shows nothing without a trade, or when it has not moved", () => {
+    expect(extendedLine(quote())).toBeUndefined();
+    expect(extendedLine(quote({ price: 373.71, at: 0, session: "post" }))).toBeUndefined();
   });
 });

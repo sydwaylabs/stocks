@@ -2,7 +2,7 @@ import { POINTS } from "./format.js";
 import * as finnhub from "./providers/finnhub.js";
 import * as nasdaq from "./providers/nasdaq.js";
 import * as yahoo from "./providers/yahoo.js";
-import { ProviderError, type ChartRange, type Details, type Earnings, type Quote, type SearchResult, type Series } from "./providers/types.js";
+import { ProviderError, type ChartRange, type Details, type Earnings, type Extended, type NewsItem, type Quote, type SearchResult, type Series } from "./providers/types.js";
 
 /**
  * Decides which source answers, and makes sure several keys on one symbol cost one request.
@@ -29,6 +29,8 @@ export type Providers = {
   yahooChart: (symbol: string) => Promise<yahoo.ChartResult>;
   yahooSearch: (query: string) => Promise<SearchResult[]>;
   yahooRange: (symbol: string, range: ChartRange) => Promise<yahoo.ChartResult>;
+  yahooNews: (query: string) => Promise<NewsItem[]>;
+  yahooExtended: (symbol: string) => Promise<Extended | undefined>;
   finnhubQuote: (symbol: string, key: string) => Promise<Quote>;
   finnhubProfile: (symbol: string, key: string) => Promise<finnhub.Profile>;
   finnhubMetric: (symbol: string, key: string) => Promise<finnhub.Metric>;
@@ -41,6 +43,8 @@ export const liveProviders: Providers = {
   yahooChart: (s) => yahoo.fetchChart(s),
   yahooSearch: (q) => yahoo.search(q),
   yahooRange: (s, r) => yahoo.fetchRange(s, r),
+  yahooNews: (q) => yahoo.news(q),
+  yahooExtended: (s) => yahoo.fetchExtended(s),
   finnhubQuote: (s, k) => finnhub.fetchQuote(s, k),
   finnhubProfile: (s, k) => finnhub.fetchProfile(s, k),
   finnhubMetric: (s, k) => finnhub.fetchMetric(s, k),
@@ -67,6 +71,12 @@ const RANGE_TTL_MS = 10 * 60_000;
 const PROFILE_TTL_MS = 24 * 60 * 60_000;
 /** The earnings date for the key's badge; asked for once every few hours per symbol. */
 const EARNINGS_TTL_MS = 6 * 60 * 60_000;
+/** Headlines: asked for only when the news is opened, and fresh enough for a quarter of an hour. */
+const NEWS_TTL_MS = 15 * 60_000;
+/** The most headlines a window shows. */
+export const NEWS_MAX = 5;
+/** A story tagged with more symbols than this is a market round-up, not news about this one. */
+const NEWS_MAX_TICKERS = 5;
 
 /**
  * A plain US ticker — no exchange suffix, index caret, pair or future. The only symbols Nasdaq
@@ -88,6 +98,8 @@ export class QuoteService {
   private readonly ranges = new Map<string, Cached<Series>>();
   private readonly profiles = new Map<string, Cached<finnhub.Profile | undefined>>();
   private readonly profilesInflight = new Map<string, Promise<finnhub.Profile | undefined>>();
+  private readonly newsCache = new Map<string, Cached<NewsItem[]>>();
+  private readonly extendedCache = new Map<string, Cached<Extended | undefined>>();
 
   constructor(
     private readonly getKey: () => string | null | Promise<string | null>,
@@ -194,8 +206,26 @@ export class QuoteService {
   async detailed(symbol: string): Promise<Snapshot> {
     const id = normalise(symbol);
     const snap = await this.snapshot(id);
-    const extra = await this.fetchFundamentals(id, snap);
-    return { ...snap, details: { ...snap.details, ...definedOnly(extra) } };
+    const [extra, extended] = await Promise.all([this.fetchFundamentals(id, snap), this.extended(id)]);
+    return { ...snap, quote: { ...snap.quote, extended }, details: { ...snap.details, ...definedOnly(extra) } };
+  }
+
+  /**
+   * The last pre-market or after-hours trade, for the detail view only: one more Yahoo request, so
+   * keys and a board's rows never pay for it. Plain US tickers only — the only ones with extended
+   * hours on Yahoo. Never throws: a missing line is not an error.
+   */
+  private async extended(id: string): Promise<Extended | undefined> {
+    if (!US_TICKER.test(id)) return undefined;
+    const cached = this.extendedCache.get(id);
+    if (cached && this.now() - cached.at < QUOTE_TTL_MS) return cached.value;
+    try {
+      const value = await this.providers.yahooExtended(id);
+      this.extendedCache.set(id, { at: this.now(), value });
+      return value;
+    } catch {
+      return undefined;
+    }
   }
 
   /**
@@ -216,6 +246,27 @@ export class QuoteService {
     const { series } = await this.providers.yahooRange(id, range);
     this.ranges.set(key, { at: this.now(), value: series });
     return series;
+  }
+
+  /**
+   * Recent headlines about a symbol, from Yahoo's news search. Yahoo finds none for most listings
+   * with an exchange suffix or for a coin, so it is asked again by the base symbol (RY.TO → RY)
+   * and then by the name ("Bitcoin USD" → "Bitcoin"), keeping only stories tagged with the symbol.
+   */
+  async news(symbol: string): Promise<NewsItem[]> {
+    const id = normalise(symbol);
+    const cached = this.newsCache.get(id);
+    if (cached && this.now() - cached.at < NEWS_TTL_MS) return cached.value;
+    const base = id.split(".")[0];
+    const name = this.quotes.get(id)?.value.quote.name?.replace(/\s+[A-Z]{3}$/, "");
+    const tags = new Set([id, base]);
+    let value: NewsItem[] = [];
+    for (const query of new Set([id, base, name].filter((q): q is string => !!q))) {
+      value = pickNews(await this.providers.yahooNews(query), tags);
+      if (value.length) break;
+    }
+    this.newsCache.set(id, { at: this.now(), value });
+    return value;
   }
 
   /** Yahoo's search, falling back to Finnhub's when Yahoo is down and a key is set. */
@@ -320,6 +371,11 @@ export function isStale(snap: Pick<Snapshot, "fetchedAt" | "series">, maxAge: nu
   const session = snap.series?.session;
   if (session && snap.fetchedAt >= session.end) return false;
   return now - snap.fetchedAt > maxAge;
+}
+
+/** The first few stories tagged with one of `tags`, leaving out round-ups that tag many symbols. */
+export function pickNews(items: NewsItem[], tags: ReadonlySet<string>): NewsItem[] {
+  return items.filter((n) => n.tickers.length <= NEWS_MAX_TICKERS && n.tickers.some((t) => tags.has(t))).slice(0, NEWS_MAX);
 }
 
 export function normalise(symbol: string): string {

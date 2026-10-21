@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ProviderError, type Quote } from "./providers/types.js";
+import { ProviderError, type NewsItem, type Quote } from "./providers/types.js";
 import type { ChartResult } from "./providers/yahoo.js";
 import { daysUntil, exchangeDate, isStale, QuoteService, unitOf, type Providers } from "./quotes.js";
 
@@ -24,6 +24,8 @@ function stubs(overrides: Partial<Providers> = {}): Providers {
     yahooChart: vi.fn(async (s: string) => chart(s)),
     yahooSearch: vi.fn(async () => [{ symbol: "AAPL", name: "Apple", type: "EQUITY" }]),
     yahooRange: vi.fn(async (s: string) => ({ ...chart(s), series: { points: [1, 2, 3, 4], times: [0, 1, 2, 3], utcOffset: 0 } })),
+    yahooNews: vi.fn(async () => []),
+    yahooExtended: vi.fn(async () => undefined),
     finnhubQuote: vi.fn(async (s: string) => finnhubQuote(s)),
     finnhubProfile: vi.fn(async () => ({ name: "Apple Inc", exchange: "NASDAQ", marketCap: 3e12, industry: "Technology", country: "US", website: "https://www.apple.com/" })),
     finnhubMetric: vi.fn(async () => ({ wk52High: 130, wk52Low: 70, pe: 31.2, eps: 6.1, dividendYield: 0.44, beta: 1.2 })),
@@ -163,6 +165,16 @@ describe("QuoteService.snapshot", () => {
 });
 
 describe("QuoteService.detailed", () => {
+  it("adds the last extended-hours trade for a plain US ticker only, and shrugs off a failure", async () => {
+    const after = { price: 380.45, at: 1, session: "post" as const };
+    const yahooExtended = vi.fn(async (s: string) => (s === "MSFT" ? Promise.reject(new Error("down")) : after));
+    const service = new QuoteService(() => null, { providers: stubs({ yahooExtended }) });
+    expect((await service.detailed("TSLA")).quote.extended).toEqual(after);
+    expect((await service.detailed("RY.TO")).quote.extended).toBeUndefined();
+    expect((await service.detailed("MSFT")).quote.extended).toBeUndefined();
+    expect(yahooExtended.mock.calls.map((c) => c[0])).toEqual(["TSLA", "MSFT"]);
+  });
+
   it("takes market cap, ratios, company facts and earnings from Finnhub with a key", async () => {
     const snap = await new QuoteService(() => "k", { providers: stubs() }).detailed("AAPL");
     expect(snap.details).toMatchObject({
@@ -313,6 +325,41 @@ describe("QuoteService.search", () => {
     const providers = stubs();
     expect(await new QuoteService(() => null, { providers }).search("  ")).toEqual([]);
     expect(providers.yahooSearch).not.toHaveBeenCalled();
+  });
+});
+
+const story = (title: string, tickers: string[], at = 0): NewsItem => ({ title, publishedAt: at, url: `https://example.com/${title}`, tickers });
+
+describe("QuoteService.news", () => {
+  it("keeps stories tagged with the symbol, five at most, and leaves out round-ups", async () => {
+    const many = ["A", "B", "C", "D", "E", "AAPL"];
+    const items = [story("roundup", many), story("other", ["MSFT"]), ...[1, 2, 3, 4, 5, 6].map((i) => story(`apple ${i}`, ["AAPL", "GOOG"]))];
+    const service = new QuoteService(() => null, { providers: stubs({ yahooNews: vi.fn(async () => items) }) });
+    const news = await service.news("aapl");
+    expect(news.map((n) => n.title)).toEqual(["apple 1", "apple 2", "apple 3", "apple 4", "apple 5"]);
+  });
+
+  it("asks again by the base symbol, then by the name without its currency", async () => {
+    const yahooNews = vi.fn(async (q: string) => (q === "Bitcoin" ? [story("btc", ["BTC-USD", "IBIT"])] : q === "RY" ? [story("rbc", ["RY"])] : []));
+    const providers = stubs({ yahooNews, yahooChart: vi.fn(async (s: string) => chart(s, { name: "Bitcoin USD" })) });
+    const service = new QuoteService(() => null, { providers });
+    expect((await service.news("RY.TO")).map((n) => n.title)).toEqual(["rbc"]);
+    await service.snapshot("BTC-USD");
+    expect((await service.news("BTC-USD")).map((n) => n.title)).toEqual(["btc"]);
+    expect(yahooNews.mock.calls.map((c) => c[0])).toEqual(["RY.TO", "RY", "BTC-USD", "Bitcoin"]);
+  });
+
+  it("keeps an answer, even an empty one, for a quarter of an hour", async () => {
+    let now = 0;
+    const yahooNews = vi.fn(async () => []);
+    const service = new QuoteService(() => null, { providers: stubs({ yahooNews }), now: () => now });
+    await service.news("AAPL");
+    now = 14 * 60_000;
+    await service.news("AAPL");
+    expect(yahooNews).toHaveBeenCalledTimes(1);
+    now = 16 * 60_000;
+    await service.news("AAPL");
+    expect(yahooNews).toHaveBeenCalledTimes(2);
   });
 });
 

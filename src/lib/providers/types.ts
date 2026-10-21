@@ -17,8 +17,13 @@ export type Quote = {
   dayLow?: number;
   /** Epoch ms of the last trade the price reflects. */
   marketTime?: number;
+  /** US listings, in the detail view: the latest pre-market or after-hours trade. */
+  extended?: Extended;
   source: Source;
 };
+
+/** The last trade outside the regular session, and which side of it: before the open or after the close. */
+export type Extended = { price: number; at: number; session: "pre" | "post" };
 
 export type Details = {
   exchange?: string;
@@ -61,6 +66,19 @@ export type Series = {
 /** The spans the window's chart offers. The key's sparkline is always "1d". */
 export const CHART_RANGES = ["1d", "5d", "1mo", "6mo", "ytd", "1y"] as const;
 export type ChartRange = (typeof CHART_RANGES)[number];
+
+/** A headline from Yahoo's news search. */
+export type NewsItem = {
+  title: string;
+  publisher?: string;
+  /** Epoch ms. */
+  publishedAt: number;
+  url: string;
+  /** The symbols Yahoo tags the story with: one for a story about a company, many for a round-up. */
+  tickers: string[];
+  /** Yahoo's 140 px square of the story's picture, when it has one. */
+  thumbnail?: string;
+};
 
 export type SearchResult = {
   symbol: string;

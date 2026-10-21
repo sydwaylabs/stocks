@@ -5,7 +5,7 @@ import * as finnhub from "./finnhub.js";
 import { getJson } from "./http.js";
 import { parseMarketCap } from "./nasdaq.js";
 import { ProviderError } from "./types.js";
-import { parseChart, parseSearch } from "./yahoo.js";
+import { parseChart, parseExtended, parseNews, parseSearch } from "./yahoo.js";
 
 /** Fixtures were captured from the live endpoints on 2026-10-16, then trimmed. */
 const fixture = (name: string): unknown =>
@@ -33,6 +33,24 @@ describe("yahoo chart", () => {
     expect(details.instrumentType).toBe("EQUITY");
     expect(details.wk52High).toBeGreaterThanOrEqual(details.wk52Low!);
     expect(details.marketCap).toBeUndefined();
+  });
+
+  it("takes the last after-hours trade, with its time, once after-hours trading has ended", () => {
+    // Captured at 20:03 ET, when Yahoo's fulldayPrice had already fallen back to the close.
+    const x = parseExtended(fixture("yahoo-chart-tsla-prepost.json"));
+    expect(x).toMatchObject({ price: 380.45, session: "post" });
+    expect(new Date(x!.at).toISOString()).toBe("2026-10-20T23:59:58.000Z");
+  });
+
+  it("names the session by the trade's own time, and has nothing while the regular session trades", () => {
+    const periods = { pre: [[{ start: 100, end: 200 }]], regular: [[{ start: 200, end: 300 }]], post: [[{ start: 300, end: 400 }]] };
+    const body = (times: number[], closes: (number | null)[]) =>
+      ({ chart: { result: [{ meta: { tradingPeriods: periods }, timestamp: times, indicators: { quote: [{ close: closes }] } }] } });
+    expect(parseExtended(body([110, 150], [9, 10]))).toMatchObject({ price: 10, session: "pre" });
+    expect(parseExtended(body([150, 250], [10, 11]))).toBeUndefined();
+    expect(parseExtended(body([250, 310, 320], [11, 12, null]))).toMatchObject({ price: 12, session: "post", at: 310_000 });
+    // A chart asked for without extended hours lists regular periods only, as an array.
+    expect(parseExtended(fixture("yahoo-chart-aapl.json"))).toBeUndefined();
   });
 
   it("drops null gaps from the series, keeping times aligned", () => {
@@ -75,6 +93,34 @@ describe("yahoo chart", () => {
     expect(kindOf(() => parseChart({}, "AAPL"))).toBe("unavailable");
     expect(kindOf(() => parseChart({ chart: { result: [{ meta: {} }] } }, "AAPL"))).toBe("unavailable");
     expect(kindOf(() => parseChart(null, "AAPL"))).toBe("unavailable");
+  });
+});
+
+describe("yahoo news", () => {
+  it("returns headlines with their publisher, time, link and tags", () => {
+    const items = parseNews(fixture("yahoo-news-aapl.json"));
+    expect(items).toHaveLength(9);
+    expect(items[1]).toMatchObject({ publisher: "Investing.com", tickers: ["AAPL"] });
+    expect(items[1].title).toMatch(/foldable/);
+    expect(items.every((n) => n.url.startsWith("https://") && n.publishedAt > 1.7e12)).toBe(true);
+  });
+
+  it("takes the square picture, from Yahoo's image host only", () => {
+    const items = parseNews(fixture("yahoo-news-aapl.json"));
+    expect(items.filter((n) => n.thumbnail).length).toBeGreaterThan(3);
+    expect(items.every((n) => !n.thumbnail || n.thumbnail.startsWith("https://s.yimg.com/"))).toBe(true);
+    const story = (url: string) => ({ news: [{ title: "a", link: "https://x.test/", providerPublishTime: 1, thumbnail: { resolutions: [{ tag: "140x140", url }] } }] });
+    expect(parseNews(story("https://elsewhere.test/a.jpg"))[0].thumbnail).toBeUndefined();
+    expect(parseNews(story("https://s.yimg.com.evil.test/a.jpg"))[0].thumbnail).toBeUndefined();
+  });
+
+  it("drops a story with no title or a link that is not https", () => {
+    const body = { news: [{ title: "a", link: "http://x.test/", providerPublishTime: 1 }, { link: "https://x.test/", providerPublishTime: 1 }, { title: "b", link: "https://x.test/b", providerPublishTime: 1 }] };
+    expect(parseNews(body).map((n) => n.title)).toEqual(["b"]);
+  });
+
+  it("refuses a body with no news list", () => {
+    expect(kindOf(() => parseNews({}))).toBe("unavailable");
   });
 });
 
