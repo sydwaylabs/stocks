@@ -90,17 +90,21 @@ export type WatchlistSettings = {
   display?: "price" | "change";
   changeAs?: "percent" | "amount";
   pinWindow?: boolean;
-  /** How the board orders its rows. Only a view: the list, and the key's rotation, keep their order. */
-  boardSort?: "custom" | "change" | "name" | "price";
+  /**
+   * What a hold opens: the list with the key's symbol's details beside it, or the list alone.
+   * Chosen in the inspector, never inferred from closing the panel — Esc closes the panel before
+   * the window, so remembering a close made keys open list-only that nobody had asked to.
+   */
+  boardOpens?: "details" | "list";
 };
 
-export const WATCHLIST_EDITABLE = ["symbols", "rotateSec", "display", "changeAs"] as const;
+export const WATCHLIST_EDITABLE = ["symbols", "rotateSec", "display", "changeAs", "boardOpens"] as const;
 export const ROTATE_CHOICES = [0, 5, 10, 30] as const;
 /** As many as the board shows without scrolling. */
 export const WATCHLIST_MAX = 10;
 
 export function mergeWatchlist(saved: Partial<WatchlistSettings> | undefined): Required<WatchlistSettings> {
-  const base = { symbols: "", rotateSec: 0, display: "price", changeAs: "percent", pinWindow: false, boardSort: "custom", ...saved };
+  const base = { symbols: "", rotateSec: 0, display: "price", changeAs: "percent", pinWindow: false, boardOpens: "details", ...saved };
   const rotate = Number(base.rotateSec);
   return {
     symbols: parseSymbols(typeof base.symbols === "string" ? base.symbols : "").join(", "),
@@ -108,7 +112,7 @@ export function mergeWatchlist(saved: Partial<WatchlistSettings> | undefined): R
     display: base.display === "change" ? "change" : "price",
     changeAs: base.changeAs === "amount" ? "amount" : "percent",
     pinWindow: base.pinWindow === true,
-    boardSort: (["change", "name", "price"] as const).find((s) => s === base.boardSort) ?? "custom",
+    boardOpens: base.boardOpens === "list" ? "list" : "details",
   };
 }
 

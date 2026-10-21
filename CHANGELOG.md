@@ -15,10 +15,11 @@ notes and the Marketplace "what's new" text are generated from this file.
 - **Watchlist**: up to 10 symbols on one key. Press for the next; hold for a board with a row per
   symbol — price, move and the day's line — and beside it the chart and stats of the symbol the key
   is showing. Click a row, or use ↑ / ↓, to show another; put it on the key or remove it from the
-  panel, or close the panel with ✕. The window keeps one height, with room for the whole
-  list. Rows can be dragged (or moved with ⌥↑ / ⌥↓) to reorder. Sort
-  the board by today's change, name or price; your own order is kept, and the sort is remembered.
-  Click a change to switch the whole board, and the key, between % and the amount. Optional
+  panel. The window keeps one height, with room for the whole list. Rows can be dragged (or moved
+  with ⌥↑ / ⌥↓) to reorder. Click a change to switch the whole board, and the key, between % and
+  the amount. The details button beside the pin, or Esc, hides the panel, and the key remembers
+  it, so the board opens on the list alone with details a click away (also **Hold opens** in the
+  key's settings). Optional
   rotation every 5, 10 or 30 seconds. Add symbols by typing them, or from the board's + search,
   which stays open to add several. On a Stream Deck + it works on a dial too: turn to move
   through the list, push or touch the strip for the board.
@@ -46,6 +47,11 @@ notes and the Marketplace "what's new" text are generated from this file.
 - Every window has **Refresh** (or R), which fetches the latest prices past any cache, and
   **Pin** (or P), which keeps it open until you close it: no closing after ten idle minutes or
   when you switch folders. Each key remembers its pin.
+- **Pre-market and after-hours** prices for US stocks and funds in the window, beside today's
+  move — "After hours 379.30 +1.50%" — against the last close. Keys keep the regular close.
+- **News** in every window, from the newspaper button beside the symbol: the latest few headlines
+  about it, with its picture, from Yahoo Finance, each opening in your browser. No key needed, and nothing is fetched
+  until you click. The company's website moves to a globe button beside it.
 - Click a figure's label in the window — Beta, P/E, Market cap and the rest — for what it means.
 - Press to refresh; hold for a window with a chart, day and 52-week ranges, volume, market cap
   and a **Change symbol** button. The chart shows today's session on its own clock — a morning

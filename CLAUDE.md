@@ -28,10 +28,21 @@ Finnhub key handling through `src/services.ts`, and one inspector script (`ui/st
   board's height, so the list never scrolls), dots across the top. Tap moves on (pausing
   rotation); hold opens the board (`mode: "board"`): the list, and beside it the whole detail view
   as a panel (`.split.side`), so the chart code is shared. The panel opens on the key's symbol and
-  the window launches wide (`BOARD_WIDE_WIDTH`) for it. ✕ or Esc closes it for that visit only:
-  remembering a close was tried, and since Esc closes the panel before the window, keys ended up
-  opening without it. The window widens and narrows about its centre (`resize` takes a `width` in
-  `native/host.swift` — a kit candidate) and keeps one height (`BOARD_VIEW_HEIGHT`, a stock's full
+  the window launches wide (`BOARD_WIDE_WIDTH`) for it. The board remembers whether the panel
+  was showing (`rememberPanel`, message `boardOpens`, the setting `boardOpens` sent as
+  `INIT.listOnly`, also the inspector's **Hold opens**): shown by the bar's details button
+  (`sidebar.right`, pressed like the pin while it shows) or a row's click, hidden by the button or
+  Esc — so Esc, Esc opens the next board on its list. Remembering Esc was dropped once, when
+  nothing showed the state or brought the panel back; the button does both, and the user asked
+  for it back. The window then launches narrow and a row's click widens it. The panel had its
+  own ✕ too; it and a sort menu (by change, name or price) were removed as too many buttons — the
+  user's call. The panel slides out: the board is `BOARD_LIST_WIDTH` wide
+  without it, the list's width beside it, so only the panel's width is added (the list was 640 →
+  560 once, and every row shrank as it opened); `resize` takes a `width` and `anchor: "left"` in
+  `native/host.swift` (a kit candidate), so the window grows from its right edge and the list
+  holds still; `.split` clips the panel while the window animates; and `closePanel` keeps it drawn
+  for `PANEL_SLIDE_MS` while the window narrows over it. Other windows still resize about their
+  centre. The board keeps one height (`BOARD_VIEW_HEIGHT`, a stock's full
   panel; it only ever grows), so a short list leaves room under it with one "Add symbol" slot.
   Rows were tried opening in place: the window grew with each one (the user's call to change).
   No CSS animation on the panel: one in a window not yet on screen is stuck at its first frame.
@@ -95,10 +106,6 @@ Every action: hold opens the window, and an empty key opens search on any press.
   the list is re-read through the cache. 📌 sets the key's `pinWindow`: `serveWindow`'s
   `keepOpen` (added to `src/window-host.ts`, a kit candidate) skips the idle close, and
   `onWillDisappear` leaves a pinned window open. After Quick Clips' stay-open pin.
-- **Board sort** (`boardSort`, remembered per key): the plugin sorts with `sortCards` before
-  sending; the list's own order — and the key's rotation — never change. Drag and ⌥↑↓ work only
-  in "custom" (My order). Class names in the page share one namespace: the menu's tick is
-  `mtick` because `tick` is the chart axis label.
 - **Palette departure**: the chart's range selector is a neutral grey pill, not the house
   `--accent` green — in the detail view green means "price up", so a green selection reads as
   data. Search keeps the house green, which has no price colours to collide with.
@@ -116,6 +123,30 @@ Every action: hold opens the window, and an empty key opens search on any press.
   `/calendar/earnings`, all in `QuoteService.detailed`; the key's earnings badge uses
   `QuoteService.earnings`, cached 6 h. Company websites reach `serveWindow`'s `links` as the
   window shows them, so `openLink` opens only a site the page was just given.
+- **News** (`QuoteService.news`, a popover from the newspaper button beside the website's,
+  `.hero-acts`): Yahoo's
+  `v1/finance/search` with `newsCount`, keyless. Kept to stories tagged with the symbol and at most
+  5 tickers (more is a market round-up); Yahoo finds nothing for `RY.TO` or `BTC-USD`, so it asks
+  again by base symbol, then by name less a trailing currency ("Bitcoin USD" finds nothing either).
+  Cached 15 min, empty answers too. Headline URLs join `links` as they are sent, like websites.
+  Each story's 140 px picture (only from `*.yimg.com`) is downloaded by the plugin, kept in memory
+  for the window's life, and served at `/asset/thumb?n=…` by index into what was sent; the
+  publisher's initial shows beneath it, as the company logo's does. Favicons were considered:
+  every link is finance.yahoo.com and no publisher domain is given. A button with an open
+  popover sets `aria-expanded`, and the page tip skips it — otherwise it reappears under the popover.
+- **Extended hours**: the detail view only (`QuoteService.detailed` → `extended`, plain US
+  tickers, 20 s cache, failures ignored) asks Yahoo's chart again with `includePrePost=true` and
+  `parseExtended` takes the last bar's price and time: inside a `tradingPeriods.pre` span is
+  "Pre-market", inside `post` "After hours", inside regular nothing. Overnight and at weekends it
+  is the last after-hours trade, as Apple's Stocks shows it. Keys, rows, the sparkline and the 1D
+  chart stay on `includePrePost=false` and never pay for it. `fulldayPrice` was tried first and
+  measured 2026-10-20: it falls back to the regular close the moment after-hours trading ends
+  (20:00 ET), and the line vanished. Shown on the move's line (a line of its own would grow the
+  board's panel). Pre-market is not yet seen live.
+- **SF Symbols** (newspaper, globe, sidebar.right) come in as path data: `npm run symbols` writes
+  `src/lib/sf-symbols.ts` from `scripts/sf-symbols.swift`, Timekeeper's script trimmed to window
+  icons. Apple's licence rules them out of the plugin's and actions' icons. The other window
+  icons are still Lucide. `globe`'s meridians come as "eraser" layers on macOS 27 (`erasersAreInk`).
 - The Finnhub tests in `providers.test.ts` use shapes from the API docs. `FINNHUB_KEY=…
   node scripts/capture-finnhub.mjs` captures real ones into `fixtures/` and reports which metric
   names are present.

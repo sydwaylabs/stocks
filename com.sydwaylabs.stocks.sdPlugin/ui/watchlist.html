@@ -47,7 +47,13 @@
       <option value="amount">Amount (+$4.20)</option>
     </sdpi-select>
   </sdpi-item>
-  <p class="hint">Press for the next symbol, hold for details. A press pauses rotation for a minute.</p>
+  <sdpi-item label="Hold opens">
+    <sdpi-select setting="boardOpens" default="details">
+      <option value="details">List and details</option>
+      <option value="list">List only</option>
+    </sdpi-select>
+  </sdpi-item>
+  <p class="hint">Press for the next symbol, hold for the board. A press pauses rotation for a minute.</p>
 
   <p class="section">Finnhub key (optional, shared by every Stocks key)</p>
   <!-- Not bound to a setting: the plugin checks the key, then stores it sealed. -->

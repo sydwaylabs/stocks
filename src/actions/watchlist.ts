@@ -286,9 +286,9 @@ export class Watchlist extends SingletonAction<WatchlistSettings> {
           this.schedule(id);
           await this.show(instance);
         },
-        sort: () => instance.settings.boardSort,
-        setSort: async (value) => {
-          instance.settings = { ...instance.settings, boardSort: value };
+        details: () => instance.settings.boardOpens !== "list",
+        setDetails: async (on) => {
+          instance.settings = { ...instance.settings, boardOpens: on ? "details" : "list" };
           await instance.action.setSettings(instance.settings);
         },
         changeAs: () => instance.settings.changeAs,

@@ -1,5 +1,5 @@
 import { getJson, type Fetch } from "./http.js";
-import { num, ProviderError, str, type ChartRange, type Details, type Quote, type SearchResult, type Series } from "./types.js";
+import { num, ProviderError, str, type ChartRange, type Extended, type Details, type NewsItem, type Quote, type SearchResult, type Series } from "./types.js";
 
 /**
  * Yahoo Finance's chart and search endpoints. Unofficial and keyless: they are what the plugin
@@ -95,6 +95,42 @@ function sessionOf(meta: Record<string, unknown>): Series["session"] {
   return start !== undefined && end !== undefined && end > start ? { start: start * 1000, end: end * 1000 } : undefined;
 }
 
+/**
+ * The last pre-market or after-hours trade in a one-day chart asked for with `includePrePost`.
+ * The bar's own time says which session it was in, so nothing is guessed from the clock. Yahoo's
+ * `fulldayPrice` was tried first: it falls back to the regular close the moment after-hours
+ * trading ends, and the after-hours line vanished overnight with it.
+ */
+export function parseExtended(body: unknown): Extended | undefined {
+  const result = (body as { chart?: { result?: unknown[] | null } })?.chart?.result?.[0] as
+    | { meta?: Record<string, unknown>; timestamp?: unknown[]; indicators?: { quote?: { close?: unknown[] }[] } }
+    | undefined;
+  const periods = result?.meta?.tradingPeriods as Record<string, unknown> | undefined;
+  if (!periods || Array.isArray(periods)) return undefined;
+  const spans = (key: string) =>
+    (Array.isArray(periods[key]) ? (periods[key] as unknown[]).flat(2) : []) as Record<string, unknown>[];
+  const within = (key: string, t: number) => spans(key).some((p) => {
+    const start = num(p?.start), end = num(p?.end);
+    return start !== undefined && end !== undefined && t >= start && t < end;
+  });
+  const closes = result?.indicators?.quote?.[0]?.close ?? [];
+  const stamps = result?.timestamp ?? [];
+  for (let i = closes.length - 1; i >= 0; i--) {
+    const price = num(closes[i]);
+    const t = num(stamps[i]);
+    if (price === undefined || t === undefined) continue;
+    // The newest trade decides: one in the regular session means there is nothing extra to show.
+    const session = within("pre", t) ? "pre" : within("post", t) ? "post" : undefined;
+    return session ? { price, at: t * 1000, session } : undefined;
+  }
+  return undefined;
+}
+
+export async function fetchExtended(symbol: string, fetchImpl?: Fetch): Promise<Extended | undefined> {
+  const url = `${CHART_URL}${encodeURIComponent(symbol)}?range=1d&interval=5m&includePrePost=true`;
+  return parseExtended(await getJson(url, { fetchImpl }));
+}
+
 export function parseSearch(body: unknown): SearchResult[] {
   const quotes = (body as { quotes?: unknown })?.quotes;
   if (!Array.isArray(quotes)) throw new ProviderError("unavailable", "search returned no quotes list");
@@ -113,6 +149,34 @@ export function parseSearch(body: unknown): SearchResult[] {
   return results;
 }
 
+/**
+ * The 140 px square, and only from Yahoo's own image host: the plugin downloads it for the window,
+ * so it fetches nothing a story could point anywhere else.
+ */
+function thumbnailOf(thumbnail: unknown): string | undefined {
+  const sizes = (thumbnail as { resolutions?: unknown })?.resolutions;
+  if (!Array.isArray(sizes)) return undefined;
+  const square = (sizes as Record<string, unknown>[]).find((r) => r?.tag === "140x140");
+  const url = str(square?.url);
+  return url && /^https:\/\/[a-z0-9.-]+\.yimg\.com\//.test(url) ? url : undefined;
+}
+
+/** Stories from a search, newest first as Yahoo sends them. Only https links: the page opens them. */
+export function parseNews(body: unknown): NewsItem[] {
+  const news = (body as { news?: unknown })?.news;
+  if (!Array.isArray(news)) throw new ProviderError("unavailable", "search returned no news list");
+  const items: NewsItem[] = [];
+  for (const raw of news as Record<string, unknown>[]) {
+    const title = str(raw?.title);
+    const url = str(raw?.link);
+    const published = num(raw?.providerPublishTime);
+    if (!title || !url?.startsWith("https://") || published === undefined) continue;
+    const tickers = Array.isArray(raw.relatedTickers) ? raw.relatedTickers.filter((t): t is string => typeof t === "string") : [];
+    items.push({ title, publisher: str(raw.publisher), publishedAt: published * 1000, url, tickers, thumbnail: thumbnailOf(raw.thumbnail) });
+  }
+  return items;
+}
+
 export async function fetchChart(symbol: string, fetchImpl?: Fetch): Promise<ChartResult> {
   const url = `${CHART_URL}${encodeURIComponent(symbol)}?range=1d&interval=5m&includePrePost=false`;
   return parseChart(await getJson(url, { fetchImpl }), symbol);
@@ -129,4 +193,9 @@ export async function fetchRange(symbol: string, range: ChartRange, fetchImpl?: 
 export async function search(query: string, fetchImpl?: Fetch): Promise<SearchResult[]> {
   const params = new URLSearchParams({ q: query, quotesCount: "12", newsCount: "0", listsCount: "0" });
   return parseSearch(await getJson(`${SEARCH_URL}?${params}`, { fetchImpl }));
+}
+
+export async function news(query: string, fetchImpl?: Fetch): Promise<NewsItem[]> {
+  const params = new URLSearchParams({ q: query, quotesCount: "0", newsCount: "10", listsCount: "0" });
+  return parseNews(await getJson(`${SEARCH_URL}?${params}`, { fetchImpl }));
 }

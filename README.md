@@ -20,12 +20,14 @@ A Stream Deck plugin by Sydway Labs, for macOS 12 or later and Stream Deck 6.9 o
 **Watchlist** keeps up to 10 symbols on one key, with a dot for each along the bottom. Type them
 into the key's settings or add them with search, which stays open so you can add several. It can
 also move on by itself every 5, 10 or 30 seconds. Holding it opens the board: a row for every
-symbol with the day's line, its price and today's move, the one on the key marked. Every row
-starts closed. A click (or ↑↓ and Return) opens a row in place to the full chart — ranges, hover, price
-scale — and the key stats, with **Show on key** and **Remove**; the other rows stay in view.
-**+** opens a search over the board to add more (it stays open for several), **↕** sorts the
-board by today's change, name or price (a view only — the list, and the key's rotation, keep your
-order; dragging works in your order), dragging a row (or ⌥↑ / ⌥↓) reorders the
+symbol with the day's line, its price and today's move, the one on the key marked, and beside it
+the full chart — ranges, hover, price scale — and the key stats of the symbol the key is showing,
+with **Show on key** and **Remove**. A click on a row (or ↑↓) shows another. The details button in
+the bar (beside the pin), or Esc, hides the panel, and the key remembers it: the next board opens
+on the list alone, narrower, with details a click away on the button or any row. **Hold opens**
+in the key's settings is the same choice.
+**+** opens a search over the board to add more (it stays open for several), dragging a row (or
+⌥↑ / ⌥↓) reorders the
 list, and clicking any change pill (or C) switches every row between % and the amount — the same
 switch as the key's **Change as** setting.
 
@@ -69,6 +71,11 @@ every Sydway Labs key. A key whose numbers are more than two refreshes old is dr
   - **on the key**: an amber **E** in the corner from a week before an earnings report until the
     day itself.
 - **Market cap without a key** comes from Nasdaq's quote summary, for US-listed stocks only.
+- **Pre-market and after-hours** prices come from Yahoo too, for US listings only; the window
+  shows them beside today's move outside regular hours.
+- **News** comes from Yahoo Finance's search: up to five recent stories tagged with the symbol,
+  fetched only when you click the newspaper button and kept for 15 minutes. Toronto and other listings with an
+  exchange suffix, and coins, are looked up by their base symbol or name, so some show none.
 
 The key is checked with Finnhub before it is saved, then stored in the plugin's global settings
 **encrypted** with a key kept in your login keychain. That keeps it out of Stream Deck profile

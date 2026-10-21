@@ -3,12 +3,12 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { buildChart } from "./lib/chart-data.js";
-import { BOARD_SORTS, buildBoardCard, buildDetail, SearchSession, sortCards, typeLabel, type BoardCard, type BoardSort } from "./lib/detail-data.js";
-import { LogoCache } from "./lib/logo-cache.js";
+import { buildBoardCard, buildDetail, SearchSession, typeLabel, type BoardCard } from "./lib/detail-data.js";
+import { downloadImage, LogoCache, type Logo } from "./lib/logo-cache.js";
 import { CHART_RANGES, ProviderError, type ChartRange, type SearchResult } from "./lib/providers/types.js";
 import { CONDITIONS, type AlertView, type Condition } from "./lib/alert.js";
 import type { QuoteService } from "./lib/quotes.js";
-import { BOARD_WIDE_WIDTH, BOARD_WINDOW_HEIGHT, renderPage, WINDOW_HEIGHT, WINDOW_WIDTH } from "./lib/window-page.js";
+import { BOARD_LIST_WIDTH, BOARD_WIDE_WIDTH, BOARD_WINDOW_HEIGHT, renderPage, WINDOW_HEIGHT, WINDOW_WIDTH } from "./lib/window-page.js";
 import { WATCHLIST_MAX } from "./lib/settings.js";
 import { findHosts, serveWindow, WindowLaunchError, type WindowMessage } from "./window-host.js";
 
@@ -55,9 +55,9 @@ export type StockWindowOptions = {
     /** The key's "Change as" setting, which the board's pills follow and can switch. */
     changeAs: () => "percent" | "amount";
     setChangeAs: (value: "percent" | "amount") => Promise<void>;
-    /** The board's sort, remembered by the key. A view only: the list keeps its order. */
-    sort: () => BoardSort;
-    setSort: (value: BoardSort) => Promise<void>;
+    /** The key's "Hold opens" setting: false opens the list alone, narrow, until a row is clicked. */
+    details: () => boolean;
+    setDetails: (on: boolean) => Promise<void>;
   };
   /**
    * Opened by the plugin, not by a press — an alert firing. Shown without taking key status, so it
@@ -79,11 +79,15 @@ export type StockWindowOptions = {
 
 export async function openStockWindow(options: StockWindowOptions): Promise<void> {
   const session = new SearchSession();
-  // Grows as the window shows company websites; serveWindow opens only exact entries.
+  // Grows as the window shows company websites and headlines; serveWindow opens only exact entries.
   const links: string[] = [];
   // Finnhub's logo URL per symbol this window has shown. The page asks for /asset/logo by symbol,
   // and only a symbol in here — the one on screen — is answered.
   const logoUrls = new Map<string, string>();
+  // Pictures of the headlines this window has been sent, asked for by index. Kept in memory for
+  // the window's life: news is stale in minutes, so there is nothing worth a disk cache.
+  const thumbs: string[] = [];
+  const thumbImages = new Map<string, Promise<Logo | null>>();
   const initialSymbol = options.symbol();
   const board = options.board;
   const mode = board && options.startIn !== "search" ? "board"
@@ -96,7 +100,8 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
   let viewing = initialSymbol;
   // A board that will show its panel opens at the width it needs, so the window does not widen
   // once it is on screen.
-  const opensWide = !!board && mode === "board" && !options.openAdd && board.list().length > 0;
+  const listOnly = !!board && !board.details();
+  const opensWide = !!board && mode === "board" && !options.openAdd && !listOnly && board.list().length > 0;
   const shown = (): string => (board ? (board.list().includes(viewing) ? viewing : "") : options.symbol());
 
   const onMessage = async (message: WindowMessage): Promise<unknown> => {
@@ -120,13 +125,17 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
             return { symbol, name: symbol, trend: "flat", points: [], error: notFound ? "Not found" : "No data" };
           }
         }));
-        return { cards: sortCards(cards, board.sort()), onKey: options.symbol(), max: WATCHLIST_MAX, changeAs: board.changeAs(), sort: board.sort() };
+        return { cards, onKey: options.symbol(), max: WATCHLIST_MAX, changeAs: board.changeAs() };
       }
       case "focus": {
         if (!board || typeof message.symbol !== "string" || !board.list().includes(message.symbol)) return { ok: false };
         viewing = message.symbol;
         return { ok: true };
       }
+      case "boardOpens":
+        if (!board || typeof message.details !== "boolean") return {};
+        await board.setDetails(message.details);
+        return { details: board.details() };
       case "pin":
         if (!options.pinned || typeof message.on !== "boolean") return {};
         await options.pinned.set(message.on);
@@ -149,11 +158,6 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         return options.alert ? { alert: await options.alert.remove() } : {};
       case "clearAlert":
         return options.alert ? { alert: await options.alert.clear() } : {};
-      case "sort": {
-        if (!board || !BOARD_SORTS.includes(message.value as BoardSort)) return { ok: false };
-        await board.setSort(message.value as BoardSort);
-        return { ok: true };
-      }
       case "changeAs": {
         if (!board || (message.value !== "percent" && message.value !== "amount")) return { ok: false };
         await board.setChangeAs(message.value);
@@ -194,6 +198,23 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
           return { detail };
         } catch (error) {
           return { message: describe(error, symbol) };
+        }
+      }
+      case "news": {
+        const symbol = shown();
+        if (!symbol) return { news: [] };
+        try {
+          const news = await options.quotes.news(symbol);
+          for (const n of news) if (!links.includes(n.url)) links.push(n.url);
+          return {
+            news: news.map(({ title, publisher, publishedAt, url, thumbnail }) => {
+              if (!thumbnail) return { title, publisher, publishedAt, url };
+              if (!thumbs.includes(thumbnail)) thumbs.push(thumbnail);
+              return { title, publisher, publishedAt, url, thumb: `/asset/thumb?n=${thumbs.indexOf(thumbnail)}` };
+            }),
+          };
+        } catch {
+          return { news: [], message: "News is unavailable right now." };
         }
       }
       case "chart": {
@@ -239,6 +260,7 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
           canChange: options.canChange,
           alert: !!options.alert,
           openAdd: options.openAdd,
+          listOnly,
           pinned: options.pinned?.get() ?? false,
         }),
         keepOpen: () => options.pinned?.get() ?? false,
@@ -247,11 +269,18 @@ export async function openStockWindow(options: StockWindowOptions): Promise<void
         onOpen: options.onOpen,
         onWarn: (text) => streamDeck.logger.warn(text),
         timeoutMs: IDLE_TIMEOUT_MS,
-        width: opensWide ? BOARD_WIDE_WIDTH : WINDOW_WIDTH,
+        // A board without its panel is the list's own width, so opening the panel never resizes it.
+        width: opensWide ? BOARD_WIDE_WIDTH : mode === "board" ? BOARD_LIST_WIDTH : WINDOW_WIDTH,
         height: mode === "board" ? BOARD_WINDOW_HEIGHT : WINDOW_HEIGHT,
         title: windowTitle,
         links,
         serveAsset: async (name, params) => {
+          if (name === "thumb") {
+            const url = thumbs[Number(params.get("n"))];
+            if (!url) return null;
+            if (!thumbImages.has(url)) thumbImages.set(url, downloadImage(url));
+            return thumbImages.get(url)!;
+          }
           const symbol = params.get("symbol") ?? "";
           const url = logoUrls.get(symbol);
           // Only a symbol on screen: the one shown, or any row of a board.

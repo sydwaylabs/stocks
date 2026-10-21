@@ -1,0 +1,198 @@
+{
+  "count": 9,
+  "quotes": [],
+  "news": [
+    {
+      "uuid": "c5b2aa68-a90e-3a44-ae89-a5696906c1a1",
+      "title": "Amazon vs Alphabet: Which \"Magnificent Seven\" Stock Is the Better Buy Right Now?",
+      "publisher": "Motley Fool",
+      "link": "https://finance.yahoo.com/markets/stocks/articles/amazon-vs-alphabet-magnificent-seven-221502729.html",
+      "providerPublishTime": 1792534502,
+      "type": "STORY",
+      "relatedTickers": [
+        "AMZN",
+        "GOOG",
+        "NVDA",
+        "AAPL"
+      ],
+      "thumbnail": {
+        "resolutions": [
+          {
+            "url": "https://s.yimg.com/lo/mysterio/api/66F3A04558A446D628CD5FA78879209DEF713F9B26607FA39C4AFEC4C488C458/subgraphmysterio/resizefill_w140_h140/https:%2F%2Fmedia.zenfs.com%2Fen%2Fmotleyfool.com%2F5aba260f809dd15db3b4e8de41d8c720.jpg",
+            "width": 140,
+            "height": 140,
+            "tag": "140x140"
+          }
+        ]
+      }
+    },
+    {
+      "uuid": "7cf49cdb-9edb-38fd-9400-4e0d0e37fe0c",
+      "title": "Apple’s $1,999 foldable phone is set to hit stores Friday, are you buying one?",
+      "publisher": "Investing.com",
+      "link": "https://finance.yahoo.com/markets/stocks/articles/apple-1-999-foldable-phone-210536588.html",
+      "providerPublishTime": 1792530336,
+      "type": "STORY",
+      "relatedTickers": [
+        "AAPL"
+      ]
+    },
+    {
+      "uuid": "0e91d904-b722-3eca-9e6f-93961c30a035",
+      "title": "Apple Stock Downgraded As Analysts Turn Cautious On iPhone Maker",
+      "publisher": "Investor's Business Daily",
+      "link": "https://finance.yahoo.com/m/0e91d904-b722-3eca-9e6f-93961c30a035/apple-stock-downgraded-as.html",
+      "providerPublishTime": 1792530326,
+      "type": "STORY",
+      "relatedTickers": [
+        "AAPL"
+      ],
+      "thumbnail": {
+        "resolutions": [
+          {
+            "url": "https://s.yimg.com/lo/mysterio/api/CEE1F8C45AF795FC3012030D7BC97575630ECE22D4BD0A87E9F6E97EAB8D9E5A/subgraphmysterio/resizefill_w140_h140/https:%2F%2Fmedia.zenfs.com%2Fen%2Fibd.com%2Ffd17a8e8208447d55ab04b08ef682785.jpg",
+            "width": 140,
+            "height": 140,
+            "tag": "140x140"
+          }
+        ]
+      }
+    },
+    {
+      "uuid": "f3498525-5b31-3702-9e4b-aa8f358f4086",
+      "title": "Stock Market Today: Dow Jumps On U.S.-Iran Hopes; This Warren Buffett Stock Offers Entry (Live Coverage)",
+      "publisher": "Investor's Business Daily",
+      "link": "https://finance.yahoo.com/m/f3498525-5b31-3702-9e4b-aa8f358f4086/stock-market-today%3A-dow-jumps.html",
+      "providerPublishTime": 1792529297,
+      "type": "STORY",
+      "relatedTickers": [
+        "^DJI",
+        "HAS",
+        "BRK-B",
+        "^GSPC",
+        "MMM",
+        "GOOG",
+        "EFX",
+        "AAPL",
+        "AMGN"
+      ],
+      "thumbnail": {
+        "resolutions": [
+          {
+            "url": "https://s.yimg.com/lo/mysterio/api/E788C4595B3B5EEC0ED02B342E01D22C22D1B01E464C41B9844D27E537806210/subgraphmysterio/resizefill_w140_h140/https:%2F%2Fmedia.zenfs.com%2Fen%2Fibd.com%2F8b83b7bd0abe5445e998ba14f9770d0a.jpg",
+            "width": 140,
+            "height": 140,
+            "tag": "140x140"
+          }
+        ]
+      }
+    },
+    {
+      "uuid": "38fa8110-71dc-35a8-b35c-b759e6e117dc",
+      "title": "Apple (AAPL) Stock Sinks As Market Gains: What You Should Know",
+      "publisher": "Zacks",
+      "link": "https://finance.yahoo.com/markets/stocks/articles/apple-aapl-stock-sinks-market-204502756.html",
+      "providerPublishTime": 1792529102,
+      "type": "STORY",
+      "relatedTickers": [
+        "AAPL",
+        "^GSPC",
+        "^DJI",
+        "^IXIC"
+      ],
+      "thumbnail": {
+        "resolutions": [
+          {
+            "url": "https://s.yimg.com/lo/mysterio/api/BB7BE1C558860FF1931102601C1F9CE0CD5C80738BA0D9F551F6584A0DE51E25/subgraphmysterio/resizefill_w140_h140/https:%2F%2Fmedia.zenfs.com%2Fen%2Fzacks.com%2Ff541c90e0d995722d10914cb76a7c653.jpg",
+            "width": 140,
+            "height": 140,
+            "tag": "140x140"
+          }
+        ]
+      }
+    },
+    {
+      "uuid": "f27097c4-a2a3-33bd-825a-d85af7a62b38",
+      "title": "Unretired at 68 and the Paycheck Is Back? These 3 ETFs Decide What the New Money Should Do",
+      "publisher": "24/7 Wall St.",
+      "link": "https://finance.yahoo.com/markets/stocks/articles/unretired-68-paycheck-back-3-203322464.html",
+      "providerPublishTime": 1792528402,
+      "type": "STORY",
+      "relatedTickers": [
+        "SCHG",
+        "NVDA",
+        "AAPL",
+        "AVDE",
+        "AVIG"
+      ],
+      "thumbnail": {
+        "resolutions": [
+          {
+            "url": "https://s.yimg.com/lo/mysterio/api/30ACD0068F8B8F711555D4641E80DB3DAE59ED69BFF30A7F233AD23317F6B6FF/subgraphmysterio/resizefill_w140_h140/https:%2F%2Fmedia.zenfs.com%2Fen%2F24_7_wall_st__718%2F412d5e3f3582df49eaa1e28ec1398e68.jpg",
+            "width": 140,
+            "height": 140,
+            "tag": "140x140"
+          }
+        ]
+      }
+    },
+    {
+      "uuid": "bf678b20-0580-361c-a449-3e0cb50330e7",
+      "title": "How major US stock indexes fared Tuesday 10/20/2026",
+      "publisher": "Associated Press",
+      "link": "https://finance.yahoo.com/markets/world-indices/articles/major-us-stock-indexes-fared-202506799.html",
+      "providerPublishTime": 1792527906,
+      "type": "STORY",
+      "relatedTickers": [
+        "^GSPC",
+        "^DJI",
+        "CL=F",
+        "^RUT",
+        "^IXIC",
+        "AAPL",
+        "META",
+        "EFX",
+        "HAS"
+      ]
+    },
+    {
+      "uuid": "eef5bf6d-154d-37b6-9629-19162c3b5ebd",
+      "title": "Prediction: Apple’s Stock Is Due for a Reality Check on Nov. 2",
+      "publisher": "Motley Fool",
+      "link": "https://finance.yahoo.com/markets/stocks/articles/prediction-apple-stock-due-reality-200300997.html",
+      "providerPublishTime": 1792526580,
+      "type": "STORY",
+      "relatedTickers": [
+        "AAPL",
+        "^GSPC",
+        "NVDA"
+      ],
+      "thumbnail": {
+        "resolutions": [
+          {
+            "url": "https://s.yimg.com/lo/mysterio/api/CA6114A2DF4AAEF6D1F27C41D4C70A73822AF7375751DC5492659D488F71CF01/subgraphmysterio/resizefill_w140_h140/https:%2F%2Fmedia.zenfs.com%2Fen%2Fmotleyfool.com%2F1aa94e7b0fd587aaee166d971c3a300f.png",
+            "width": 140,
+            "height": 140,
+            "tag": "140x140"
+          }
+        ]
+      }
+    },
+    {
+      "uuid": "7e101f44-c295-3fc0-be04-331617bc3d57",
+      "title": "Apple Bets $100 Million on U.S. Titanium Supply for Its Next iPhones",
+      "publisher": "GuruFocus.com",
+      "link": "https://finance.yahoo.com/technology/articles/apple-bets-100-million-u-192245655.html",
+      "providerPublishTime": 1792524165,
+      "type": "STORY",
+      "relatedTickers": [
+        "AAPL",
+        "AVGO",
+        "GLW",
+        "COHR",
+        "AMKR",
+        "TSM"
+      ]
+    }
+  ]
+}

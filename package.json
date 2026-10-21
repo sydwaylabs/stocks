@@ -16,6 +16,7 @@
         "pack": "streamdeck pack com.sydwaylabs.stocks.sdPlugin --force",
         "verify": "node scripts/verify-package.mjs",
         "icons": "node scripts/render-icons.mjs",
+        "symbols": "swift scripts/sf-symbols.swift",
         "release": "npm run typecheck && npm test && npm run build && npm run build:native && npm run pack && npm run verify"
     },
     "devDependencies": {

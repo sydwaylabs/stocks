@@ -64,7 +64,8 @@ export const TIP_SCRIPT = `
     if (target === shownFor) return;
     var warm = shownFor !== null || Date.now() - lastHidden < WARM_MS;
     hide();
-    if (!target || !target.getAttribute("data-hint")) return;
+    /* A button whose popover is open has said what it is: its tip would sit under the popover. */
+    if (!target || !target.getAttribute("data-hint") || target.getAttribute("aria-expanded") === "true") return;
     if (warm) show(target, target.getAttribute("data-hint"));
     else pending = setTimeout(function () { show(target, target.getAttribute("data-hint")); }, REST_MS);
   });
